@@ -27,7 +27,10 @@ model-grand-prix/
 ├── styles.css                     # Styles (shared)
 ├── index.html                     # Default race page
 ├── gemini-vs-deepseek.html        # Gemini vs DeepSeek page
-├── test-framework.html            # Framework test page
+├── 📁 tools/
+│   └── test-framework.html        # Framework test page
+├── 📁 docs/                       # Build history & design docs
+├── 📁 archive/                    # Superseded file backups
 └── README.md                      # Documentation
 ```
 
@@ -51,7 +54,7 @@ python3 -m http.server 8080
 ```bash
 cd /home/user/model-grand-prix
 python3 -m http.server 8080
-# Open http://localhost:8080/test-framework.html
+# Open http://localhost:8080/tools/test-framework.html
 ```
 
 ## 🔧 Creating Your Own Race
@@ -166,7 +169,7 @@ python3 -m http.server 8080
 
 - **README.md** - Complete framework documentation
 - **HOW-TO-CREATE-CUSTOM-RACE.md** - Step-by-step guide
-- **FULL-PROJECT-DOCUMENTATION.md** - Original project docs
+- **docs/FULL-PROJECT-DOCUMENTATION.md** - Original project docs
 - **phase*-completion.md** - Development phase reports
 
 ## 🧪 Testing
@@ -174,7 +177,7 @@ python3 -m http.server 8080
 Test the framework with:
 ```bash
 python3 -m http.server 8080
-# Open http://localhost:8080/test-framework.html
+# Open http://localhost:8080/tools/test-framework.html
 ```
 
 This verifies:

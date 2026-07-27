@@ -7,6 +7,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const ROOT = path.join(__dirname, "..");
 
 let passed = 0;
 let failed = 0;
@@ -35,12 +36,12 @@ section("1. File Structure Validation");
 const requiredFiles = [
   "index.html", "styles.css", "app.js", "metrics.js",
   "race3d.js", "stunt-framework.js", "audio.js",
-  "vendor/three.min.js", "README.md", "FULL-PROJECT-DOCUMENTATION.md",
-  "research-notes.md", "stunts-and-judging-plan.md"
+  "vendor/three.min.js", "README.md", "docs/FULL-PROJECT-DOCUMENTATION.md",
+  "docs/research-notes.md", "docs/stunts-and-judging-plan.md"
 ];
 
 requiredFiles.forEach((file) => {
-  const exists = fs.existsSync(path.join(__dirname, file));
+  const exists = fs.existsSync(path.join(ROOT, file));
   assert(exists, `File exists: ${file}`);
 });
 
@@ -49,7 +50,7 @@ requiredFiles.forEach((file) => {
 // ============================================================
 section("2. HTML Accessibility Audit");
 
-const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 
 assert(html.includes('skip-link'), "Skip links present for keyboard navigation");
 assert(html.includes('role="main"'), "Main landmark role defined");
@@ -71,7 +72,7 @@ assert(html.includes('aria-selected='), "Tab selection state exposed");
 // ============================================================
 section("3. CSS Accessibility & Contrast Audit");
 
-const css = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
+const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 
 assert(css.includes('.skip-link'), "Skip link styles defined");
 assert(css.includes(':focus-visible'), "Focus-visible styles defined for keyboard users");
@@ -94,7 +95,7 @@ assert(css.includes('prefers-reduced-motion'), "Reduced-motion media query prese
 section("4. Judging Engine Validation");
 
 // Load metrics.js in a sandboxed context
-const metricsCode = fs.readFileSync(path.join(__dirname, "metrics.js"), "utf8");
+const metricsCode = fs.readFileSync(path.join(ROOT, "metrics.js"), "utf8");
 const metricsSandbox = { window: {}, Math, Intl, console };
 metricsSandbox.window = metricsSandbox;
 const metricsFn = new Function("window", "Math", "Intl", "console", metricsCode);
@@ -138,7 +139,7 @@ assert(Phase1.normalizeMetric("cost", 10) === 0, "Cost anchor: $10 = 0");
 // ============================================================
 section("5. Reduced-Motion Stunt Substitutions");
 
-const stuntCode = fs.readFileSync(path.join(__dirname, "stunt-framework.js"), "utf8");
+const stuntCode = fs.readFileSync(path.join(ROOT, "stunt-framework.js"), "utf8");
 
 assert(stuntCode.includes("reducedMotion"), "StuntFramework accepts reducedMotion flag");
 assert(stuntCode.includes("motionScale"), "Sample path uses motion scale for reduced-motion");
@@ -168,7 +169,7 @@ assert(lowPowerTorus && parseInt(lowPowerTorus[1]) < 46, `Low-power torus count 
 // ============================================================
 section("7. Camera Obstruction Prevention");
 
-const race3dCode = fs.readFileSync(path.join(__dirname, "race3d.js"), "utf8");
+const race3dCode = fs.readFileSync(path.join(ROOT, "race3d.js"), "utf8");
 
 assert(race3dCode.includes("minCameraHeight"), "Camera minimum height guard present");
 assert(race3dCode.includes("desiredCamera.y < minCameraHeight"), "Camera height clamped above minimum");
@@ -205,7 +206,7 @@ assert(race3dCode.includes("seededRandom"), "Seeded random function present for 
 assert(race3dCode.includes("function seededRandom"), "Seeded random is a named function");
 
 // Verify all source IDs in app.js are valid references
-const appCode = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const appCode = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 
 // Count sources in app.js
 const sourceMatches = appCode.match(/id:\s*(\d+)/g) || [];

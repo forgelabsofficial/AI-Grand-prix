@@ -134,7 +134,13 @@ model-grand-prix/
 │   └── three.min.js            # Three.js library
 ├── index.html                  # Default race page
 ├── gemini-vs-deepseek.html     # Gemini vs DeepSeek page
-└── test-framework.html         # Framework test page
+├── race-selector.html          # Race picker landing page
+├── docs/                       # Build history, phase reports, design docs
+├── archive/                    # Superseded pre-refactor file backups
+└── tools/
+    ├── test-framework.html     # Framework test page
+    ├── capture-garage.html     # Garage capture/recording tool
+    └── ...                     # Other dev/debug test pages
 ```
 
 ## 🎮 Race Config Format
@@ -253,7 +259,7 @@ Test the framework with:
 
 ```bash
 python3 -m http.server 8080
-# Open http://localhost:8080/test-framework.html
+# Open http://localhost:8080/tools/test-framework.html
 ```
 
 This will verify:
@@ -297,9 +303,9 @@ See `configs/gemini-vs-deepseek.js` - Focused comparison with 7 models
 
 ## 📖 Documentation
 
-- **Full Documentation** - See `FULL-PROJECT-DOCUMENTATION.md`
+- **Full Documentation** - See `docs/FULL-PROJECT-DOCUMENTATION.md`
 - **Phase Reports** - See `phase*-completion.md` files
-- **Research Notes** - See `research-notes.md`
+- **Research Notes** - See `docs/research-notes.md`
 
 ## 🎯 Use Cases
 
@@ -313,7 +319,7 @@ See `configs/gemini-vs-deepseek.js` - Focused comparison with 7 models
 
 1. Create a new config in `configs/`
 2. Create corresponding HTML file
-3. Test with `test-framework.html`
+3. Test with `tools/test-framework.html`
 4. Update this README
 
 ## 📄 License
