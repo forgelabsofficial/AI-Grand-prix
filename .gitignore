@@ -1,0 +1,13 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+
+# Ad-hoc backup copies (use git history / archive/ instead)
+*.backup
+*.backup-*
+*.bak
+
+# Local tooling
+node_modules/
+.python-version

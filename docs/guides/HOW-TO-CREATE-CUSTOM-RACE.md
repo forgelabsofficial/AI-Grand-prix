@@ -9,9 +9,9 @@ cp -r model-grand-prix my-custom-race
 cd my-custom-race
 ```
 
-### Step 2: Edit the Data in app.js
+### Step 2: Edit the Data in src/app.js
 
-Open `app.js` and find these sections:
+Open `src/app.js` and find these sections:
 
 #### 1. Companies (around line 28)
 
@@ -126,7 +126,7 @@ const sources = [
 
 ### Step 3: Update HTML Content
 
-Edit `index.html` and change:
+Edit your race page (e.g. `races/default.html`) and change:
 
 1. **Page title** (line 6):
 ```html
@@ -198,7 +198,7 @@ Edit `index.html` and change:
 
 ## Example: Smartphone Race
 
-### Companies (app.js)
+### Companies (src/app.js)
 
 ```javascript
 const companies = {
@@ -219,7 +219,7 @@ const companies = {
 };
 ```
 
-### Models (app.js)
+### Models (src/app.js)
 
 ```javascript
 const models = [
@@ -339,6 +339,6 @@ http://localhost:8080
 
 ## That's It!
 
-Just edit the data in `app.js` and update the HTML content. The framework handles everything else automatically.
+Just edit the data in `src/app.js` and update the HTML content. The framework handles everything else automatically.
 
 **Happy Racing!** 🏁

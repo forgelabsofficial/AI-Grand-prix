@@ -15,7 +15,7 @@ A complete, production-ready framework for creating interactive AI model race vi
 
 ## 🎯 Quick Start
 
-### Run the Default Race (Anthropic vs OpenAI vs Moonshot)
+### Run the Race Picker
 
 ```bash
 cd model-grand-prix
@@ -23,22 +23,28 @@ python3 -m http.server 8080
 # Open http://localhost:8080
 ```
 
-### Run Gemini vs DeepSeek Race
+`index.html` at the repo root is a landing page that links to every race.
+
+### Run the Default Race (Anthropic vs OpenAI vs Moonshot) directly
 
 ```bash
-cd model-grand-prix
-python3 -m http.server 8080
-# Open http://localhost:8080/gemini-vs-deepseek.html
+# Open http://localhost:8080/races/default.html
+```
+
+### Run Gemini vs DeepSeek Race directly
+
+```bash
+# Open http://localhost:8080/races/gemini-vs-deepseek.html
 ```
 
 ## 🔧 Creating Your Own Race
 
 ### Step 1: Create Config File
 
-Create a new config file in `configs/` directory:
+Create a new config file in `assets/configs/`:
 
 ```javascript
-// configs/my-race.js
+// assets/configs/my-race.js
 window.RACE_CONFIG = {
   name: "My Custom Race",
   companyOrder: ["company1", "company2"],
@@ -89,7 +95,7 @@ window.RACE_CONFIG = {
 
 ### Step 2: Create HTML File
 
-Create a new HTML file (copy from `gemini-vs-deepseek.html`):
+Create a new HTML file in `races/` (copy from `races/gemini-vs-deepseek.html`):
 
 ```html
 <!DOCTYPE html>
@@ -98,14 +104,14 @@ Create a new HTML file (copy from `gemini-vs-deepseek.html`):
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Race - Model Grand Prix</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../styles/styles.css">
 </head>
 <body>
-  <!-- Copy all content from gemini-vs-deepseek.html -->
+  <!-- Copy all content from races/gemini-vs-deepseek.html -->
   <!-- Just change the config script tag: -->
-  <script src="configs/my-race.js"></script>
-  <script src="app.js"></script>
-  <!-- ... rest of scripts -->
+  <script src="../assets/configs/my-race.js"></script>
+  <script src="../src/app.js"></script>
+  <!-- ... rest of scripts, all relative to races/ via ../ -->
 </body>
 </html>
 ```
@@ -114,27 +120,43 @@ Create a new HTML file (copy from `gemini-vs-deepseek.html`):
 
 ```bash
 python3 -m http.server 8080
-# Open http://localhost:8080/my-race.html
+# Open http://localhost:8080/races/my-race.html
 ```
+
+Optionally add a card for it in the root `index.html` race picker.
 
 ## 📁 Project Structure
 
 ```
 model-grand-prix/
-├── app.js                      # Main application logic
-├── race3d.js                   # 3D race engine (WebGL)
-├── metrics.js                  # Scoring system
-├── stunt-framework.js          # Stunt animation system
-├── audio.js                    # Audio system
-├── styles.css                  # Styles
-├── configs/
-│   ├── default.js              # Default race config
-│   └── gemini-vs-deepseek.js   # Gemini vs DeepSeek config
-├── vendor/
-│   └── three.min.js            # Three.js library
-├── index.html                  # Default race page
-├── gemini-vs-deepseek.html     # Gemini vs DeepSeek page
-└── test-framework.html         # Framework test page
+├── index.html                  # Race picker / landing page
+├── races/
+│   ├── default.html            # Default race page
+│   └── gemini-vs-deepseek.html # Gemini vs DeepSeek page
+├── src/
+│   ├── app.js                  # Main application logic
+│   ├── race3d.js                # 3D race engine (WebGL)
+│   ├── metrics.js               # Scoring system
+│   ├── stunt-framework.js       # Stunt animation system
+│   └── audio.js                 # Audio system
+├── styles/
+│   └── styles.css               # Styles
+├── assets/
+│   ├── configs/
+│   │   ├── default.js           # Default race config
+│   │   └── gemini-vs-deepseek.js # Gemini vs DeepSeek config
+│   └── vendor/
+│       └── three.min.js         # Three.js library
+├── docs/                        # Build history, phase reports, design docs
+│   └── guides/
+│       ├── QUICKSTART.md
+│       └── HOW-TO-CREATE-CUSTOM-RACE.md
+├── archive/                     # Superseded pre-refactor file backups
+└── tools/
+    ├── test-framework.html      # Framework test page
+    ├── capture-garage.html      # Garage capture/recording tool
+    ├── phase6-test.js           # Automated assertion suite
+    └── ...                      # Other dev/debug test pages
 ```
 
 ## 🎮 Race Config Format
@@ -253,7 +275,7 @@ Test the framework with:
 
 ```bash
 python3 -m http.server 8080
-# Open http://localhost:8080/test-framework.html
+# Open http://localhost:8080/tools/test-framework.html
 ```
 
 This will verify:
@@ -263,21 +285,27 @@ This will verify:
 - Stunt events
 - Sources
 
+There is also a Node-based automated assertion suite:
+
+```bash
+node tools/phase6-test.js
+```
+
 ## 📝 Example Configs
 
 ### Default Race (3 Companies)
 
-See `configs/default.js` - Anthropic, OpenAI, Moonshot AI with 40+ models
+See `assets/configs/default.js` - Anthropic, OpenAI, Moonshot AI with 40+ models
 
 ### Gemini vs DeepSeek (2 Companies)
 
-See `configs/gemini-vs-deepseek.js` - Focused comparison with 7 models
+See `assets/configs/gemini-vs-deepseek.js` - Focused comparison with 7 models
 
 ## 🔧 Technical Details
 
 ### Framework Features
 
-- **Single Codebase** - One `app.js` works with any config
+- **Single Codebase** - One `src/app.js` works with any config
 - **Dynamic Timeline** - Automatically adjusts to model date range
 - **Config Override** - `window.RACE_CONFIG` overrides defaults
 - **Backward Compatible** - Works without config (uses defaults)
@@ -293,13 +321,15 @@ See `configs/gemini-vs-deepseek.js` - Focused comparison with 7 models
 
 - WebGL support
 - Modern JavaScript (ES6+)
-- Three.js (included in `vendor/`)
+- Three.js (included in `assets/vendor/`)
 
 ## 📖 Documentation
 
-- **Full Documentation** - See `FULL-PROJECT-DOCUMENTATION.md`
-- **Phase Reports** - See `phase*-completion.md` files
-- **Research Notes** - See `research-notes.md`
+- **Quick Start** - See `docs/guides/QUICKSTART.md`
+- **Custom Race Guide** - See `docs/guides/HOW-TO-CREATE-CUSTOM-RACE.md`
+- **Full Documentation** - See `docs/FULL-PROJECT-DOCUMENTATION.md`
+- **Phase Reports** - See `docs/phase*-completion.md` files
+- **Research Notes** - See `docs/research-notes.md`
 
 ## 🎯 Use Cases
 
@@ -311,9 +341,9 @@ See `configs/gemini-vs-deepseek.js` - Focused comparison with 7 models
 
 ## 🤝 Contributing
 
-1. Create a new config in `configs/`
-2. Create corresponding HTML file
-3. Test with `test-framework.html`
+1. Create a new config in `assets/configs/`
+2. Create corresponding HTML file in `races/`
+3. Test with `tools/test-framework.html`
 4. Update this README
 
 ## 📄 License
@@ -326,6 +356,6 @@ The framework is complete and production-ready. Create your own race configs and
 
 ---
 
-**Framework Version:** 1.0  
-**Last Updated:** 2026-07-24  
+**Framework Version:** 1.0
+**Last Updated:** 2026-07-27
 **Status:** Production Ready ✅

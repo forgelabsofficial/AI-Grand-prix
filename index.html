@@ -1,619 +1,301 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0d0c">
-  <meta name="description" content="An evidence-backed, interactive five-year AI model graph and animated company race.">
-  <title>Model Grand Prix</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Grand Prix - Race Selector</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0b0d0c 0%, #1a1d1c 100%);
+      color: #eef2e8;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    
+    h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #d8ff51 0%, #aeea3d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #8d958c;
+      font-size: 1.2em;
+    }
+    
+    .race-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+      margin-top: 40px;
+    }
+    
+    .race-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .race-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--card-color, #d8ff51), transparent);
+    }
+    
+    .race-card:hover {
+      transform: translateY(-8px);
+      border-color: var(--card-color, #d8ff51);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    
+    .race-icon {
+      font-size: 3em;
+      margin-bottom: 20px;
+    }
+    
+    .race-title {
+      font-size: 1.8em;
+      margin-bottom: 10px;
+      color: #eef2e8;
+    }
+    
+    .race-description {
+      color: #8d958c;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    
+    .race-meta {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .meta-tag {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      color: #bcc3b9;
+    }
+    
+    .race-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--card-color, #d8ff51);
+      font-weight: 600;
+      text-decoration: none;
+      transition: gap 0.3s ease;
+    }
+    
+    .race-card:hover .race-action {
+      gap: 12px;
+    }
+    
+    .race-action svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: #8d958c;
+      font-size: 0.9em;
+    }
+    
+    .info-section {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 30px;
+      margin-top: 40px;
+    }
+    
+    .info-section h2 {
+      color: #d8ff51;
+      margin-bottom: 15px;
+    }
+    
+    .info-section p {
+      color: #bcc3b9;
+      line-height: 1.8;
+      margin-bottom: 15px;
+    }
+    
+    .info-section code {
+      background: rgba(216, 255, 81, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #d8ff51;
+    }
+  </style>
 </head>
 <body>
-  <a class="skip-link" href="#graphView">Skip to graph view</a>
-  <a class="skip-link" href="#raceView">Skip to race view</a>
-  <div class="noise" aria-hidden="true"></div>
-  <main class="app" id="app" role="main">
-    <header class="topbar">
-      <a class="brand" href="#" id="brandHome" aria-label="Model Grand Prix home">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="brand-copy"><b>MODEL</b><em>GRAND PRIX</em></span>
+  <div class="container">
+    <header>
+      <h1>🏁 Model Grand Prix</h1>
+      <p class="subtitle">Choose your race configuration</p>
+    </header>
+
+    <div class="race-grid">
+      <!-- Original AI Models Race -->
+      <a href="races/default.html" class="race-card" style="--card-color: #ff6b45;">
+        <div class="race-icon">🤖</div>
+        <h2 class="race-title">Original AI Models</h2>
+        <p class="race-description">
+          The classic five-year race featuring Anthropic (Claude), OpenAI (GPT), and Moonshot AI (Kimi) models.
+        </p>
+        <div class="race-meta">
+          <span class="meta-tag">3 Companies</span>
+          <span class="meta-tag">2021-2026</span>
+          <span class="meta-tag">Full Data</span>
+        </div>
+        <span class="race-action">
+          Launch Race
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14m-5-5 5 5-5 5"/>
+          </svg>
+        </span>
       </a>
 
-      <div class="mode-switch" role="tablist" aria-label="View">
-        <button class="mode-tab is-active" id="graphTab" role="tab" aria-selected="true" aria-controls="graphView">
-          <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 15V3m0 12h14M4.5 11l3-3 2.5 2 4-5"/></svg>
-          Graph
-        </button>
-        <button class="mode-tab" id="raceTab" role="tab" aria-selected="false" aria-controls="raceView">
-          <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 12.5h2l1.5-4h7l2 4H16v2h-1.5M5 14.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
-          Race
-        </button>
-      </div>
-
-      <div class="top-actions">
-        <span class="research-stamp"><i></i> Research snapshot · 23 Jul 2026</span>
-        <button class="icon-button" id="methodButton" aria-label="Open scoring method">
-          <span>Method</span>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 9.5V14m0-8.2v.4"/></svg>
-        </button>
-        <button class="icon-button" id="sourcesButton" aria-label="Open research sources">
-          <span>Sources</span>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3.5h7l3 3V16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M12 3.5V7h3M7 10h5M7 13h5"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <section class="view graph-view is-active" id="graphView" role="tabpanel" aria-labelledby="graphTab">
-      <aside class="graph-sidebar">
-        <div class="eyebrow-row">
-          <span class="eyebrow">LIVE COMPARISON</span>
-          <span class="status-pill"><i></i> Evidence loaded</span>
+      <!-- Gemini vs DeepSeek Race -->
+      <a href="races/gemini-vs-deepseek.html" class="race-card" style="--card-color: #4285f4;">
+        <div class="race-icon">⚡</div>
+        <h2 class="race-title">Gemini vs DeepSeek</h2>
+        <p class="race-description">
+          Head-to-head comparison of Google's Gemini and DeepSeek's latest models in 2024.
+        </p>
+        <div class="race-meta">
+          <span class="meta-tag">2 Companies</span>
+          <span class="meta-tag">2023-2024</span>
+          <span class="meta-tag">Custom Data</span>
         </div>
-
-        <label class="title-editor" for="graphTitle">
-          <span>Graph title</span>
-          <span class="title-input-row">
-            <textarea id="graphTitle" rows="2" maxlength="64" spellcheck="false">THE MODEL GRAND PRIX</textarea>
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 14-.5 3 3-.5L15 8l-2.5-2.5L4 14Zm7.5-7.5L14 9"/></svg>
-          </span>
-        </label>
-
-        <div class="control-block">
-          <div class="control-label-row">
-            <span class="control-label">Judging category</span>
-            <button class="micro-link" data-open-method>How scoring works</button>
-          </div>
-          <label class="profile-select-shell">
-            <select id="graphProfile" aria-label="Judging category or championship"></select>
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>
-          </label>
-          <p class="profile-description" id="profileDescription">Broad capability anchored to independent testing.</p>
-        </div>
-
-        <div class="grid-label-row">
-          <span class="control-label">Starting grid</span>
-          <button class="micro-link" id="resetModels">Use current flagships</button>
-        </div>
-        <div class="model-grid" id="modelGrid" aria-live="polite"></div>
-
-        <div class="score-note">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.2a7.2 7.2 0 1 0 0-14.4 7.2 7.2 0 0 0 0 14.4Z"/><path d="M10 9v4.2m0-6.7v.3"/></svg>
-          <p><b>Fixed-anchor scoring.</b> Operational categories show N/A when no comparable measurement exists—missing data is never invented.</p>
-        </div>
-      </aside>
-
-      <section class="graph-stage" aria-label="Five-year model capability graph">
-        <div class="stage-heading">
-          <div>
-            <span class="kicker">5 YEARS OF RELEASES · 23 JUL 2021 — 23 JUL 2026</span>
-            <h1 id="stageTitle">THE MODEL GRAND PRIX</h1>
-          </div>
-          <div class="rank-summary" id="rankSummary"></div>
-        </div>
-
-        <div class="chart-shell" id="chartShell" role="group" tabindex="0" aria-label="Interactive five-year graph. Click the graph background to start the race.">
-          <svg id="historyChart" viewBox="0 0 1000 560" role="img" aria-labelledby="chartTitle chartDesc">
-            <title id="chartTitle">Five-year AI model capability history</title>
-            <desc id="chartDesc">Lines show the evidence-backed Frontier Pace for Anthropic, OpenAI, and Moonshot AI from July 2021 to July 2026.</desc>
+        <span class="race-action">
+          Launch Race
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14m-5-5 5 5-5 5"/>
           </svg>
-          <div class="chart-tooltip" id="chartTooltip" role="tooltip" hidden></div>
-          <span class="chart-axis-label">FRONTIER PACE</span>
-          <span class="race-cta">
-            <span class="race-cta-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 6 5-6 5V7Z"/></svg>
-            </span>
-            <span><b>Click the graph to race it</b><small>Watch every upgrade change the lead</small></span>
-            <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
-          </span>
+        </span>
+      </a>
+
+      <!-- Create Your Own Race -->
+      <div class="race-card" style="--card-color: #a88cff; cursor: default;">
+        <div class="race-icon">🎨</div>
+        <h2 class="race-title">Create Your Own</h2>
+        <p class="race-description">
+          Build a custom race with your own data. Perfect for comparing products, sports teams, or any time-series data.
+        </p>
+        <div class="race-meta">
+          <span class="meta-tag">Unlimited</span>
+          <span class="meta-tag">Custom Data</span>
+          <span class="meta-tag">Full Control</span>
         </div>
-
-        <div class="legend-row">
-          <div class="legend" id="chartLegend"></div>
-          <div class="legend-help"><span class="dot sample"></span> release milestone <span class="line sample"></span> interpolated display path</div>
-        </div>
-      </section>
-    </section>
-
-    <section class="view race-view" id="raceView" role="tabpanel" aria-labelledby="raceTab" aria-hidden="true">
-      <div class="race-hud">
-        <div class="race-title-block">
-          <button class="back-button" id="backToGraph" aria-label="Back to graph">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg>
-          </button>
-          <div>
-            <span class="kicker" id="raceModeKicker">EVIDENCE CIRCUIT · FIVE-YEAR PLAYBACK</span>
-            <h1 id="raceTitle">THE MODEL GRAND PRIX</h1>
-          </div>
-        </div>
-
-        <div class="race-telemetry">
-          <div class="telemetry-box"><small>SEASON DATE</small><strong id="raceDate">23 JUL 2021</strong></div>
-          <div class="telemetry-box"><small>LEADER</small><strong id="raceLeader">IN THE PITS</strong></div>
-          <div class="telemetry-box profile-box"><small>TRACK</small><strong id="raceProfileLabel">OVERALL</strong></div>
-        </div>
-      </div>
-
-      <div class="race-main">
-        <aside class="race-sidecard">
-          <div class="sidecard-topline"><span>EVIDENCE ORDER</span><i class="live-dot"></i></div>
-          <div class="season-clock">
-            <span id="raceYearBig">2021</span>
-            <small id="raceMonthBig">JUL</small>
-          </div>
-          <div class="leaderboard" id="raceLeaderboard"></div>
-          <div class="race-mini-note" id="raceRuleNote">
-            Forward-only race physics: cars never reverse or pause for a score change. Camera cuts change only the viewpoint—never a car’s position.
-          </div>
-        </aside>
-
-        <section class="circuit circuit-3d" id="circuit" aria-label="Live 3D company race with switchable cameras">
-          <div class="three-stage" id="threeStage">
-            <div class="vignette-overlay" aria-hidden="true"></div>
-            <div class="grain-overlay" aria-hidden="true"></div>
-            <div class="dof-overlay" aria-hidden="true"></div>
-            <div class="rain-overlay" aria-hidden="true"></div>
-            <div class="fog-overlay" aria-hidden="true"></div>
-            <div class="heat-shimmer" aria-hidden="true"></div>
-            <div class="lens-flare" aria-hidden="true"></div>
-            <canvas id="raceCanvas" aria-label="WebGL-rendered race circuit"></canvas>
-            <div class="render-loading" id="renderLoading">
-              <span class="loading-spinner"></span>
-              <b>INITIALIZING RACE ENGINE</b>
-              <small>Building circuit, cars and broadcast cameras…</small>
-            </div>
-            <div class="cinema-bar top" aria-hidden="true"></div>
-            <div class="cinema-bar bottom" aria-hidden="true"></div>
-            <div class="broadcast-hud" aria-hidden="true">
-              <div class="broadcast-live"><i></i> LIVE · MODEL GP</div>
-              <div class="camera-readout"><small>CAMERA</small><b id="cameraShot">AUTO DIRECTOR</b></div>
-              <div class="broadcast-condition"><span>TRACK</span><b>DRY · 24°C</b></div>
-            </div>
-            <div class="audio-dock" id="audioDock" aria-label="Race audio controls">
-              <button id="bgmToggle" type="button" aria-pressed="false" title="Toggle background music">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12M9 10l10-2M6.5 20C8.4 20 10 19.1 10 18s-1.6-2-3.5-2S3 16.9 3 18s1.6 2 3.5 2Zm10-2c1.9 0 3.5-.9 3.5-2s-1.6-2-3.5-2-3.5.9-3.5 2 1.6 2 3.5 2Z"/></svg>
-                <span>BGM</span><small>OFF</small>
-              </button>
-              <button id="sfxToggle" type="button" aria-pressed="false" title="Toggle engines, gear shifts, boosts and overtake horns">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10H4Zm12-1c1.2 1 1.2 5 0 6m3-9c3.5 3.3 3.5 8.7 0 12"/></svg>
-                <span>SFX</span><small>OFF</small>
-              </button>
-              <button id="stuntsToggle" class="is-on" type="button" aria-pressed="true" title="Toggle research-backed stunts">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h5l3-8 3 8h7M8 17c1.2 2.5 2.7 3.8 4.5 3.8S16 19.5 17 17M11 9l1-5 2 5"/></svg>
-                <span>STUNTS</span><small>ON</small>
-              </button>
-              <button id="replayButton" type="button" aria-pressed="false" title="Replay the last five seconds at 0.6× speed" disabled>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 5v5h5M10 9l5 3-5 3V9Z"/></svg>
-                <span>REPLAY</span><small>0.6×</small>
-              </button>
-            </div>
-            <div class="track-map-wrap" aria-hidden="true">
-              <span>CIRCUIT MAP</span>
-              <canvas id="trackMap" width="230" height="92"></canvas>
-            </div>
-            <div class="focus-readout" id="focusReadout" aria-hidden="true">
-              <span>FOLLOWING</span><b>LEADER</b>
-            </div>
-            <article class="stunt-card" id="stuntCard" hidden role="status" aria-live="assertive" aria-atomic="true">
-              <div class="stunt-card-top">
-                <span id="stuntCompany">OPENAI</span>
-                <b id="stuntCategory">REASONING</b>
-              </div>
-              <small id="stuntModel">o1-preview</small>
-              <h2 id="stuntName">LOGIC LEAP</h2>
-              <p id="stuntDescription">A research-backed reasoning milestone is visualized as a precision ramp jump.</p>
-              <div class="stunt-progress">
-                <span id="stuntPhase">APPROACH</span>
-                <i><b id="stuntProgressBar"></b></i>
-                <strong id="stuntDifficulty">90</strong>
-              </div>
-              <small class="stunt-evidence" id="stuntEvidence">Reasoning score · 90 / 100</small>
-              <footer><span id="stuntSource">RESEARCH SOURCE</span><b>NO BONUS POINTS</b></footer>
-            </article>
-            <div class="director-banner" id="directorBanner" aria-hidden="true">
-              <span id="directorKicker">RACE CONTROL</span>
-              <strong id="directorHeadline">AUTO DIRECTOR ONLINE</strong>
-              <small id="directorDetail">Monitoring all three cars and the timing feed</small>
-            </div>
-
-            <div class="timing-tower" id="timingTower" aria-hidden="true">
-              <div class="timing-tower-header">
-                <span>LIVE TIMING</span>
-                <span class="lap-badge" id="timingLap">LAP 1</span>
-              </div>
-              <div id="timingRows"></div>
-            </div>
-
-            <div class="sector-times" id="sectorTimes" aria-hidden="true">
-              <div class="sector-row">
-                <span class="sector-label">SECTOR 1</span>
-                <span class="sector-value" id="sector1Value">--:---  </span>
-              </div>
-              <div class="sector-row">
-                <span class="sector-label">SECTOR 2</span>
-                <span class="sector-value" id="sector2Value">--:---  </span>
-              </div>
-              <div class="sector-row">
-                <span class="sector-label">SECTOR 3</span>
-                <span class="sector-value" id="sector3Value">--:---  </span>
-              </div>
-            </div>
-
-            <div class="speed-trap" id="speedTrap" aria-hidden="true">
-              <div class="speed-trap-value" id="speedTrapValue">0</div>
-              <div class="speed-trap-unit">PACE INDEX</div>
-              <div class="speed-trap-company" id="speedTrapCompany">—</div>
-            </div>
-
-            <div class="position-history" id="positionHistory" aria-hidden="true">
-              <div class="position-history-label">POSITION HISTORY</div>
-              <canvas id="positionHistoryCanvas" width="168" height="48"></canvas>
-            </div>
-
-            <div class="championship-overlay" id="championshipOverlay" aria-hidden="true">
-              <div class="championship-title" id="championshipTitle">FRONTIER CUP</div>
-              <div id="championshipRows"></div>
-            </div>
-
-            <div class="lower-third" id="lowerThird" aria-hidden="true">
-              <div class="lower-third-bg">
-                <div class="lower-third-main">
-                  <div class="lower-third-name" id="ltName">—</div>
-                  <div class="lower-third-model" id="ltModel">—</div>
-                  <div class="lower-third-stats">
-                    <div class="lower-third-stat">
-                      <small>PACE</small>
-                      <b id="ltPace">—</b>
-                    </div>
-                    <div class="lower-third-stat">
-                      <small>STUNTS</small>
-                      <b id="ltStunts">0</b>
-                    </div>
-                    <div class="lower-third-stat">
-                      <small>GAP</small>
-                      <b id="ltGap">—</b>
-                    </div>
-                  </div>
-                </div>
-                <div class="lower-third-side">
-                  <div class="lower-third-pos" id="ltPos">—</div>
-                  <div class="lower-third-gap" id="ltGapSmall">—</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="comparison-overlay" id="comparisonOverlay" aria-hidden="true">
-              <div class="comparison-grid">
-                <div class="comparison-col" id="compLeft">
-                  <div class="comparison-company" id="compLeftCompany">—</div>
-                  <div class="comparison-model" id="compLeftModel">—</div>
-                  <div class="comparison-score" id="compLeftScore">—</div>
-                </div>
-                <div class="comparison-vs">VS</div>
-                <div class="comparison-col" id="compRight">
-                  <div class="comparison-company" id="compRightCompany">—</div>
-                  <div class="comparison-model" id="compRightModel">—</div>
-                  <div class="comparison-score" id="compRightScore">—</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="commentary-overlay" id="commentaryOverlay" aria-hidden="true">
-              <div class="commentary-text" id="commentaryText"></div>
-            </div>
-
-            <div class="start-lights" id="startLights" aria-hidden="true">
-              <div class="start-light"></div>
-              <div class="start-light"></div>
-              <div class="start-light"></div>
-              <div class="start-light"></div>
-              <div class="start-light"></div>
-            </div>
-
-            <div class="bookmark-bar" id="bookmarkBar" aria-hidden="true">
-              <button class="bookmark-add" id="bookmarkAdd" title="Bookmark current moment">+</button>
-            </div>
-
-
-            <div class="fullscreen-timer" id="fullscreenTimer" aria-hidden="true">
-              <span class="timer-current" id="timerCurrent">0</span>
-              <span class="timer-separator">/</span>
-              <span class="timer-total" id="timerTotal">31</span>
-              <span class="timer-unit">SEC</span>
-            </div>
-
-            <div class="colorblind-selector" id="colorblindSelector">
-              <button class="colorblind-btn" data-mode="none" title="Normal vision">N</button>
-              <button class="colorblind-btn" data-mode="protanopia" title="Protanopia (red-blind)">P</button>
-              <button class="colorblind-btn" data-mode="deuteranopia" title="Deuteranopia (green-blind)">D</button>
-              <button class="colorblind-btn" data-mode="tritanopia" title="Tritanopia (blue-blind)">T</button>
-            </div>
-
-            <div class="race-preset-selector" id="racePresetSelector">
-              <button class="preset-btn" data-preset="quick" title="Quick mode: Major milestones only, faster pace">
-                <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                QUICK
-              </button>
-              <button class="preset-btn is-active" data-preset="standard" title="Standard mode: Balanced milestone coverage">
-                <svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"/></svg>
-                STANDARD
-              </button>
-              <button class="preset-btn" data-preset="extended" title="Extended mode: Detailed coverage of all milestones">
-                <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10M12 2v10l7-7"/></svg>
-                EXTENDED
-              </button>
-              <button class="preset-btn" data-preset="cinematic" title="Cinematic mode: Maximum detail with longer coverage">
-                <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
-                CINEMATIC
-              </button>
-            </div>
-            <div class="instant-replay-overlay" id="replayOverlay" hidden aria-live="polite">
-              <span><i></i> INSTANT REPLAY</span>
-              <b id="replayReason">LAST ACTION</b>
-              <small>0.6× · REPLAY CAM</small>
-              <div><i id="replayProgressBar"></i></div>
-            </div>
-            <div class="camera-cut" id="cameraCut" aria-hidden="true"></div>
-          </div>
-
-          <div class="camera-dock" id="cameraDock" aria-label="Camera angle">
-            <span class="camera-dock-label">CAM</span>
-            <button class="is-active" data-camera="director" title="Automatic broadcast director">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v11H4zM8 4h8M8 21h8"/></svg><span>Auto</span>
-            </button>
-            <button data-camera="chase" title="Chase camera">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 18 3-8h10l3 8M8 10l2-4h4l2 4M7 18v2m10-2v2"/></svg><span>Chase</span>
-            </button>
-            <button data-camera="cockpit" title="Cockpit camera">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18 7 8h10l2 10M9 8l1-4h4l1 4M9 14h6"/></svg><span>Cockpit</span>
-            </button>
-            <button data-camera="drone" title="Aerial drone camera">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8v4H8zM4 8h4m8 0h4M4 16h4m8 0h4M6 6l2 4m10-4-2 4M6 18l2-4m10 4-2-4"/></svg><span>Drone</span>
-            </button>
-            <button data-camera="trackside" title="Trackside broadcast camera">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16h10l5-4-5-4H4v8Zm4 0v4m4-4v4"/></svg><span>Trackside</span>
-            </button>
-            <button data-camera="orbit" title="Helicopter orbit camera">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 5v5h5"/></svg><span>Heli</span>
-            </button>
-          </div>
-
-          <article class="milestone-card" id="milestoneCard" hidden role="status" aria-live="polite">
-            <div class="milestone-brand" id="milestoneBrand">OPENAI</div>
-            <time id="milestoneDate">NOV 2021</time>
-            <h2 id="milestoneModel">GPT-3 API</h2>
-            <p id="milestoneText">The model enters the circuit.</p>
-            <div class="milestone-score"><span>Pace change</span><b id="milestoneDelta">+25</b></div>
-            <button id="inspectMilestone">Inspect evidence</button>
-          </article>
-
-          <div class="race-countdown" id="raceCountdown" hidden aria-live="assertive" role="timer">3</div>
-          <div class="sr-announcer" id="srAnnouncer" aria-live="assertive" aria-atomic="true" role="status"></div>
-          <div class="race-finish" id="raceFinish" hidden role="dialog" aria-labelledby="winnerName" aria-modal="false">
-            <span class="finish-kicker">CHEQUERED FLAG · CURRENT SNAPSHOT</span>
-            <h2 id="winnerName">ANTHROPIC TAKES THE FLAG</h2>
-            <p id="winnerModel">Claude Fable 5 · 100 Frontier Pace</p>
-            <div class="podium" id="podium"></div>
-            <div class="finish-actions">
-              <button class="secondary-button" id="replayRace">Replay season</button>
-              <button class="primary-button" id="finishToGraph">Compare models</button>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div class="race-controls">
-        <button class="play-button" id="playRace" aria-label="Play race">
-          <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 7 5-7 5V7Z"/></svg>
-          <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10m6-10v10"/></svg>
-        </button>
-        <div class="timeline-wrap">
-          <div class="timeline-labels"><span id="timelineStartLabel">23 JUL 2021</span><span id="timelineEndLabel">23 JUL 2026</span></div>
-          <input type="range" id="raceScrubber" min="0" max="1000" value="0" aria-label="Race timeline">
-          <div class="year-ticks" id="timelineTicks" aria-hidden="true"><span>2021</span><span>2022</span><span>2023</span><span>2024</span><span>2025</span><span>2026</span></div>
-        </div>
-        <label class="race-setting-select speed-select">
-          <span>RACE SPEED</span>
-          <select id="raceSpeed" aria-label="Race playback speed">
-            <option value="0.5">0.5× · Study</option>
-            <option value="1" selected>1× · Standard</option>
-            <option value="1.5">1.5× · Fast</option>
-            <option value="2">2× · Sprint</option>
-          </select>
-        </label>
-        <label class="race-setting-select cinematic-select">
-          <span>CINEMATIC</span>
-          <select id="cinematicLevel" aria-label="Automatic director cinematic level">
-            <option value="calm">Calm · fewer cuts</option>
-            <option value="broadcast" selected>Broadcast · balanced</option>
-            <option value="maximum">Cinematic+ · intense</option>
-          </select>
-        </label>
-        <label class="race-setting-select race-profile-select">
-          <span>TRACK PROFILE</span>
-          <select id="raceProfile" aria-label="Race judging category or championship"></select>
-        </label>
-        <button class="shortcut-button" id="shortcutButton"><kbd>?</kbd><span>Controls</span></button>
-      </div>
-      <div class="fullscreen-controls" id="fullscreenControls">
-        <button class="fullscreen-toggle" id="fullscreenToggle" title="Toggle fullscreen mode (F11)">
-          <svg viewBox="0 0 24 24" class="fullscreen-icon-enter"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-          <svg viewBox="0 0 24 24" class="fullscreen-icon-exit"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
-        </button>
-        <button class="theater-toggle" id="theaterToggle" title="Toggle theater mode (T)">
-          <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 6l4-2h8l4 2M4 18l4 2h8l4-2"/></svg>
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <div class="scrim" id="scrim" hidden></div>
-
-  <aside class="drawer" id="sourcesDrawer" aria-hidden="true" aria-labelledby="sourcesHeading">
-    <header class="drawer-header">
-      <div><span class="kicker">AUDIT THE DATA</span><h2 id="sourcesHeading">Research sources</h2></div>
-      <button class="drawer-close" data-close-drawer aria-label="Close sources"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-    </header>
-    <div class="drawer-body">
-      <div class="source-intro">
-        <span class="source-count" id="sourceCount">40</span>
-        <p>Official release notes, technical reports and independent comparison evidence. Links open in a new tab.</p>
-      </div>
-      <div id="sourceList" class="source-list"></div>
-    </div>
-  </aside>
-
-  <aside class="drawer" id="methodDrawer" aria-hidden="true" aria-labelledby="methodHeading">
-    <header class="drawer-header">
-      <div><span class="kicker">NO FALSE PRECISION</span><h2 id="methodHeading">Scoring method</h2></div>
-      <button class="drawer-close" data-close-drawer aria-label="Close method"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-    </header>
-    <div class="drawer-body method-copy">
-      <div class="method-hero"><b>100</b><span>Current frontier leader,<br>not “100% intelligent”</span></div>
-      <h3>What the cars measure</h3>
-      <p>The judging engine now separates <b>capability</b>, <b>operations</b>, and <b>economics/deployment</b>. Every metric retains its source type, configuration, date and confidence.</p>
-      <h3>Missing evidence</h3>
-      <p>No unchanged benchmark fairly spans 2021–2026. Operational categories therefore show <b>N/A</b> when a comparable measurement is unavailable. N/A is never treated as zero.</p>
-      <div class="formula-card">
-        <span>FIXED ANCHORS</span>
-        <p>Context: log 8K→1M · Throughput: log 20→200 tok/s · Latency: inverse log 1→180s · Cost: inverse log $0.10→$10/M</p>
-      </div>
-      <h3>Ten judging categories</h3>
-      <ul class="method-list">
-        <li><i class="overall"></i><span><b>Capability</b>Overall, reasoning, coding, agents, multimodal and long context</span></li>
-        <li><i class="coding"></i><span><b>Operations</b>Measured output throughput and answer latency under a named configuration</span></li>
-        <li><i class="context"></i><span><b>Economics & deployment</b>Cost efficiency and released-weight openness</span></li>
-        <li><i class="reasoning"></i><span><b>Championships</b>Frontier, Developer, Research, Value and Open Ecosystem weighted presets</span></li>
-      </ul>
-      <h3>Audit metadata</h3>
-      <p>Open a model’s Evidence card to inspect raw values, source type, model configuration, measurement date, confidence and championship breakdown.</p>
-      <button class="text-button" id="openResearchNotes">Read the full research brief →</button>
-    </div>
-  </aside>
-
-  <dialog class="detail-dialog" id="modelDialog">
-    <button class="dialog-close" id="closeModelDialog" aria-label="Close model details"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-    <div id="modelDialogBody"></div>
-  </dialog>
-
-  <dialog class="shortcut-dialog" id="shortcutDialog">
-    <button class="dialog-close" id="closeShortcuts" aria-label="Close keyboard controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-    <span class="kicker">KEYBOARD CONTROLS</span>
-    <h2>Race like a pro</h2>
-    <div class="shortcut-grid">
-      <kbd>Space</kbd><span>Play / pause</span>
-      <kbd>←</kbd><span>Rewind three months</span>
-      <kbd>→</kbd><span>Advance three months</span>
-      <kbd>1–4</kbd><span>Overall / Reasoning / Coding / Agents</span>
-      <kbd>C</kbd><span>Cycle broadcast cameras</span>
-      <kbd>V</kbd><span>Toggle automatic director</span>
-      <kbd>F</kbd><span>Cycle followed company</span>
-      <kbd>F11</kbd><span>Toggle fullscreen mode</span>
-      <kbd>Shift+T</kbd><span>Toggle theater mode (hide UI)</span>
-      <kbd>[ / ]</kbd><span>Decrease / increase race speed</span>
-      <kbd>M</kbd><span>Toggle background music</span>
-      <kbd>N</kbd><span>Toggle engine and race sounds</span>
-      <kbd>T</kbd><span>Toggle research-backed stunts</span>
-      <kbd>Y</kbd><span>Instant replay · last five seconds</span>
-      <kbd>R</kbd><span>Restart the full race</span>
-      <kbd>G</kbd><span>Return to graph</span>
-      <kbd>Esc</kbd><span>Close open panel</span>
-    </div>
-  </dialog>
-
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-  <div class="onboarding-overlay" id="onboardingOverlay" aria-hidden="true">
-    <div class="onboarding-card" role="dialog" aria-labelledby="onboardingTitle">
-      <h2 id="onboardingTitle">Welcome to Model Grand Prix</h2>
-      <p class="subtitle">An evidence-backed five-year AI model race. Here's how to get started.</p>
-      <div class="onboarding-steps">
-        <div class="onboarding-step">
-          <div class="onboarding-step-icon">1</div>
-          <div class="onboarding-step-text">
-            <h3>Explore the Graph</h3>
-            <p>Compare Anthropic, OpenAI, and Moonshot AI across 10 judging categories. Click any point to see evidence.</p>
-          </div>
-        </div>
-        <div class="onboarding-step">
-          <div class="onboarding-step-icon">2</div>
-          <div class="onboarding-step-text">
-            <h3>Watch the Race</h3>
-            <p>Click the graph background or press <kbd>Space</kbd> to transform into a 3D race broadcast. Each car represents a company's AI progress.</p>
-          </div>
-        </div>
-        <div class="onboarding-step">
-          <div class="onboarding-step-icon">3</div>
-          <div class="onboarding-step-text">
-            <h3>Control the Broadcast</h3>
-            <p>Press <kbd>C</kbd> to cycle cameras, <kbd>V</kbd> for auto-director, <kbd>1-4</kbd> to switch categories. Use <kbd>M</kbd> and <kbd>N</kbd> for audio.</p>
-          </div>
-        </div>
-        <div class="onboarding-step">
-          <div class="onboarding-step-icon">4</div>
-          <div class="onboarding-step-text">
-            <h3>Research-Backed Stunts</h3>
-            <p>Cars perform visual stunts based on real model capabilities. These are evidence-based, not bonus points. Toggle with <kbd>T</kbd>.</p>
-          </div>
-        </div>
-      </div>
-      <div class="onboarding-actions">
-        <button class="onboarding-skip" id="onboardingSkip">Skip Tour</button>
-        <button class="onboarding-start" id="onboardingStart">Start Exploring</button>
+        <span class="race-action" onclick="showInstructions()">
+          View Instructions
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
       </div>
     </div>
-  </div>
 
-  <div class="analysis-overlay" id="analysisOverlay" aria-hidden="true">
-    <div class="analysis-panel">
-      <div class="analysis-header">
-        <h2>Post-Race Analysis</h2>
-        <button class="analysis-close" id="analysisClose" aria-label="Close analysis">
-          <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="analysis-section">
-        <h3>Performance Summary</h3>
-        <div class="analysis-stat-grid" id="analysisSummary"></div>
-      </div>
-      <div class="analysis-section">
-        <h3>Position Timeline</h3>
-        <canvas class="analysis-timeline" id="analysisTimeline" width="400" height="60"></canvas>
-      </div>
-      <div class="analysis-section">
-        <h3>Head-to-Head Comparison</h3>
-        <canvas class="analysis-chart" id="analysisComparison" width="400" height="120"></canvas>
-      </div>
-      <div class="analysis-section">
-        <h3>Key Moments</h3>
-        <div id="analysisMoments"></div>
-      </div>
+    <div class="info-section">
+      <h2>🔧 How the Framework Works</h2>
+      <p>
+        The Model Grand Prix framework is now fully reusable! You can create unlimited custom races using the same powerful 3D visualization, stunts, cameras, and audio system.
+      </p>
+      <p>
+        <strong>To create a custom race:</strong>
+      </p>
+      <p>
+        1. Copy any existing race HTML file (like <code>races/gemini-vs-deepseek.html</code>)
+      </p>
+      <p>
+        2. Modify the <code>window.customCompanies</code> and <code>window.customModels</code> objects with your data
+      </p>
+      <p>
+        3. The framework automatically adapts the cars, colors, and timeline to your data
+      </p>
+      <p>
+        <strong>Data structure:</strong>
+      </p>
+      <p>
+        Each company needs: <code>name</code>, <code>color</code>, <code>number</code>, and <code>current</code> model ID.
+        Each model needs: <code>id</code>, <code>name</code>, <code>company</code>, <code>date</code>, <code>scores</code>, and <code>summary</code>.
+      </p>
+      <p>
+        All original features (3D race, stunts, cameras, audio, replay) work automatically with your custom data!
+      </p>
     </div>
+
+    <footer>
+      <p>Model Grand Prix Framework v1.0 • Built with Three.js • MIT License</p>
+    </footer>
   </div>
 
   <script>
-    // Colorblind SVG filters
-    document.body.insertAdjacentHTML('afterbegin', `
-      <svg style="position:absolute;width:0;height:0" aria-hidden="true">
-        <defs>
-          <filter id="protanopia">
-            <feColorMatrix type="matrix" values="0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0"/>
-          </filter>
-          <filter id="deuteranopia">
-            <feColorMatrix type="matrix" values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/>
-          </filter>
-          <filter id="tritanopia">
-            <feColorMatrix type="matrix" values="0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0"/>
-          </filter>
-        </defs>
-      </svg>
-    `);
+    function showInstructions() {
+      alert(`How to Create a Custom Race:
+
+1. Copy races/gemini-vs-deepseek.html or races/default.html
+2. Find the <script> section with window.customCompanies
+3. Replace with your companies:
+   window.customCompanies = {
+     myCompany: { 
+       name: "My Company", 
+       color: "#ff0000", 
+       number: "01", 
+       current: "model-id" 
+     }
+   };
+
+4. Update window.customModels with your data:
+   window.customModels = [
+     {
+       id: 'model-id',
+       name: 'Model Name',
+       company: 'myCompany',
+       date: 'YYYY-MM-DD',
+       scores: { overall: 85, ... },
+       summary: 'Description'
+     }
+   ];
+
+5. Save as my-race.html and open in browser!
+
+All features (3D, stunts, cameras, audio) work automatically.`);
+    }
   </script>
-  <script src="metrics.js"></script>
-  <script src="configs/default.js"></script>
-  <script src="app.js"></script>
-  <script src="vendor/three.min.js"></script>
-  <script src="stunt-framework.js"></script>
-  <script src="race3d.js"></script>
-  <script src="audio.js"></script>
 </body>
 </html>

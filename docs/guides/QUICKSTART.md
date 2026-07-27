@@ -5,60 +5,73 @@ A complete, production-ready framework for creating interactive AI model race vi
 ## 🎯 What Was Built
 
 The original Model Grand Prix has been transformed into a **reusable framework** where:
-- ✅ Core framework code (app.js, race3d.js, etc.) is **shared across all races**
-- ✅ Race-specific data lives in **separate config files** (configs/*.js)
-- ✅ Each race has its own HTML page that loads its config
+- ✅ Core framework code (`src/app.js`, `src/race3d.js`, etc.) is **shared across all races**
+- ✅ Race-specific data lives in **separate config files** (`assets/configs/*.js`)
+- ✅ Each race has its own HTML page in `races/` that loads its config
 - ✅ **No code duplication** - one framework, many races
 
 ## 📦 Project Structure
 
 ```
 model-grand-prix/
-├── 📁 configs/                    # Race configurations
-│   ├── default.js                 # Anthropic vs OpenAI vs Moonshot
-│   └── gemini-vs-deepseek.js      # Gemini vs DeepSeek
-├── 📁 vendor/
-│   └── three.min.js               # Three.js library
-├── app.js                         # Core framework (shared)
-├── race3d.js                      # 3D engine (shared)
-├── metrics.js                     # Scoring system (shared)
-├── stunt-framework.js             # Stunt system (shared)
-├── audio.js                       # Audio system (shared)
-├── styles.css                     # Styles (shared)
-├── index.html                     # Default race page
-├── gemini-vs-deepseek.html        # Gemini vs DeepSeek page
-├── test-framework.html            # Framework test page
+├── index.html                     # Race picker / landing page
+├── 📁 races/
+│   ├── default.html               # Anthropic vs OpenAI vs Moonshot
+│   └── gemini-vs-deepseek.html    # Gemini vs DeepSeek
+├── 📁 src/
+│   ├── app.js                     # Core framework (shared)
+│   ├── race3d.js                  # 3D engine (shared)
+│   ├── metrics.js                 # Scoring system (shared)
+│   ├── stunt-framework.js         # Stunt system (shared)
+│   └── audio.js                   # Audio system (shared)
+├── 📁 styles/
+│   └── styles.css                 # Styles (shared)
+├── 📁 assets/
+│   ├── configs/                   # Race configurations
+│   │   ├── default.js             # Anthropic vs OpenAI vs Moonshot
+│   │   └── gemini-vs-deepseek.js  # Gemini vs DeepSeek
+│   └── vendor/
+│       └── three.min.js           # Three.js library
+├── 📁 tools/
+│   ├── test-framework.html        # Framework test page
+│   └── phase6-test.js             # Automated assertion suite
+├── 📁 docs/                       # Build history & design docs
+│   └── guides/
+│       ├── QUICKSTART.md          # This file
+│       └── HOW-TO-CREATE-CUSTOM-RACE.md
+├── 📁 archive/                    # Superseded file backups
 └── README.md                      # Documentation
 ```
 
 ## 🚀 Quick Start
 
-### Run Default Race (3 Companies)
+### Run the Race Picker
 ```bash
 cd /home/user/model-grand-prix
 python3 -m http.server 8080
 # Open http://localhost:8080
 ```
 
-### Run Gemini vs DeepSeek
+### Run Default Race (3 Companies) directly
 ```bash
-cd /home/user/model-grand-prix
-python3 -m http.server 8080
-# Open http://localhost:8080/gemini-vs-deepseek.html
+# Open http://localhost:8080/races/default.html
+```
+
+### Run Gemini vs DeepSeek directly
+```bash
+# Open http://localhost:8080/races/gemini-vs-deepseek.html
 ```
 
 ### Test Framework
 ```bash
-cd /home/user/model-grand-prix
-python3 -m http.server 8080
-# Open http://localhost:8080/test-framework.html
+# Open http://localhost:8080/tools/test-framework.html
 ```
 
 ## 🔧 Creating Your Own Race
 
 ### Step 1: Create Config File
 
-Create `configs/my-race.js`:
+Create `assets/configs/my-race.js`:
 
 ```javascript
 window.RACE_CONFIG = {
@@ -103,32 +116,34 @@ window.RACE_CONFIG = {
 
 ### Step 2: Create HTML File
 
-Copy `gemini-vs-deepseek.html` to `my-race.html` and change:
+Copy `races/gemini-vs-deepseek.html` to `races/my-race.html` and change:
 ```html
-<script src="configs/gemini-vs-deepseek.js"></script>
+<script src="../assets/configs/gemini-vs-deepseek.js"></script>
 ```
 to:
 ```html
-<script src="configs/my-race.js"></script>
+<script src="../assets/configs/my-race.js"></script>
 ```
 
 ### Step 3: Run It
 ```bash
 python3 -m http.server 8080
-# Open http://localhost:8080/my-race.html
+# Open http://localhost:8080/races/my-race.html
 ```
+
+Optionally add a card for it in the root `index.html` race picker.
 
 ## 📊 Available Races
 
 ### 1. Default Race (Anthropic vs OpenAI vs Moonshot)
-- **File:** `index.html`
-- **Config:** `configs/default.js`
+- **File:** `races/default.html`
+- **Config:** `assets/configs/default.js`
 - **Models:** 40+ models across 3 companies
 - **Timeline:** 2021-2026
 
 ### 2. Gemini vs DeepSeek
-- **File:** `gemini-vs-deepseek.html`
-- **Config:** `configs/gemini-vs-deepseek.js`
+- **File:** `races/gemini-vs-deepseek.html`
+- **Config:** `assets/configs/gemini-vs-deepseek.js`
 - **Models:** 7 models across 2 companies
 - **Timeline:** 2023-2025
 
@@ -164,17 +179,17 @@ python3 -m http.server 8080
 
 ## 📖 Documentation
 
-- **README.md** - Complete framework documentation
-- **HOW-TO-CREATE-CUSTOM-RACE.md** - Step-by-step guide
-- **FULL-PROJECT-DOCUMENTATION.md** - Original project docs
-- **phase*-completion.md** - Development phase reports
+- **README.md** - Complete framework documentation (repo root)
+- **HOW-TO-CREATE-CUSTOM-RACE.md** - Step-by-step guide (same folder as this file)
+- **docs/FULL-PROJECT-DOCUMENTATION.md** - Original project docs
+- **docs/phase*-completion.md** - Development phase reports
 
 ## 🧪 Testing
 
 Test the framework with:
 ```bash
 python3 -m http.server 8080
-# Open http://localhost:8080/test-framework.html
+# Open http://localhost:8080/tools/test-framework.html
 ```
 
 This verifies:
@@ -183,6 +198,11 @@ This verifies:
 - Model definitions
 - Stunt events
 - Source references
+
+There is also a Node-based automated assertion suite:
+```bash
+node tools/phase6-test.js
+```
 
 ## ✨ Key Benefits
 
@@ -227,6 +247,6 @@ The framework is complete and production-ready. Create your own race configs and
 
 ---
 
-**Framework Version:** 1.0  
-**Created:** 2026-07-24  
+**Framework Version:** 1.0
+**Created:** 2026-07-24
 **Status:** Production Ready ✅
