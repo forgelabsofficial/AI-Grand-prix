@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Capture Garage Sequence</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { margin: 0; background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    .capture-panel {
+      position: fixed; top: 16px; left: 16px;
+      background: rgba(10, 12, 10, 0.95);
+      border: 1px solid rgba(216, 255, 81, 0.3);
+      border-radius: 10px;
+      padding: 18px 22px;
+      z-index: 2000;
+      width: 320px;
+      backdrop-filter: blur(12px);
+      font-size: 13px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    .capture-panel h2 {
+      margin: 0 0 12px 0;
+      color: #d8ff51;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .capture-panel label {
+      display: block;
+      margin: 10px 0 4px;
+      color: #aaa;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .capture-panel select, .capture-panel input {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .capture-panel select:focus { outline: none; border-color: #d8ff51; }
+
+    .btn {
+      display: block; width: 100%;
+      padding: 11px 16px;
+      margin-top: 14px;
+      border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 600;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-start { background: #d8ff51; color: #000; }
+    .btn-start:hover:not(:disabled) { background: #e8ff81; }
+    .btn-stop { background: #ff4444; color: #fff; animation: pulse 1.5s infinite; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .progress-wrap {
+      margin-top: 14px;
+      display: none;
+    }
+    .progress-wrap.active { display: block; }
+    .progress-bar {
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #d8ff51, #b8e031);
+      width: 0%;
+      transition: width 0.1s linear;
+      border-radius: 3px;
+    }
+    .progress-text {
+      display: flex; justify-content: space-between;
+      margin-top: 6px;
+      font-size: 11px;
+      color: #888;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-line {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(216, 255, 81, 0.08);
+      border-left: 2px solid #d8ff51;
+      font-size: 12px;
+      color: #ccc;
+      display: none;
+    }
+    .status-line.active { display: block; }
+    .status-line.success { border-left-color: #4ade80; background: rgba(74, 222, 128, 0.08); }
+    .status-line.error { border-left-color: #ff4444; background: rgba(255, 68, 68, 0.08); }
+
+    .ffmpeg-box {
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 10.5px;
+      color: #d8ff51;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: none;
+      cursor: pointer;
+    }
+    .ffmpeg-box:hover { background: rgba(0,0,0,0.7); }
+    .ffmpeg-box.active { display: block; }
+
+    /* Canvas fills viewport */
+    #threeStage {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 1;
+    }
+    #raceCanvas { display: block; width: 100%; height: 100%; }
+
+    .hint {
+      font-size: 11px;
+      color: #666;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="threeStage" class="three-stage" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1;">
+    <canvas id="raceCanvas" aria-label="WebGL race capture"></canvas>
+    <!-- Required hidden elements for race3d.js -->
+    <div id="renderLoading" style="display:none"></div>
+    <div id="cameraShot" style="display:none"></div>
+    <div id="focusReadout" style="display:none"></div>
+    <div id="directorBanner" style="display:none"></div>
+    <div id="directorKicker" style="display:none"></div>
+    <div id="directorHeadline" style="display:none"></div>
+    <div id="directorDetail" style="display:none"></div>
+    <div id="cameraCut" style="display:none"></div>
+    <div id="stuntsToggle" style="display:none"></div>
+    <div id="stuntCard" style="display:none"></div>
+    <div id="stuntCompany" style="display:none"></div>
+    <div id="stuntCategory" style="display:none"></div>
+    <div id="stuntModel" style="display:none"></div>
+    <div id="stuntName" style="display:none"></div>
+    <div id="stuntDescription" style="display:none"></div>
+    <div id="stuntPhase" style="display:none"></div>
+    <div id="stuntProgressBar" style="display:none"></div>
+    <div id="stuntDifficulty" style="display:none"></div>
+    <div id="stuntEvidence" style="display:none"></div>
+    <div id="stuntSource" style="display:none"></div>
+    <div id="replayButton" style="display:none"></div>
+    <div id="replayOverlay" style="display:none"></div>
+    <div id="replayReason" style="display:none"></div>
+    <div id="replayProgressBar" style="display:none"></div>
+    <canvas id="trackMap" style="display:none"></canvas>
+  </div>
+
+  <div class="capture-panel" id="capturePanel">
+    <h2>🎬 Frame Capture</h2>
+
+    <label>Resolution</label>
+    <select id="resolution">
+      <option value="1280x720">1280 × 720 (HD)</option>
+      <option value="1920x1080" selected>1920 × 1080 (Full HD)</option>
+      <option value="2560x1440">2560 × 1440 (QHD)</option>
+      <option value="3840x2160">3840 × 2160 (4K UHD)</option>
+    </select>
+
+    <label>Frame Rate</label>
+    <select id="fps">
+      <option value="30">30 FPS</option>
+      <option value="60" selected>60 FPS</option>
+    </select>
+
+    <label>Duration</label>
+    <select id="duration">
+      <option value="17" selected>17 seconds (full sequence)</option>
+      <option value="20">20 seconds (incl. racing)</option>
+      <option value="30">30 seconds (extended)</option>
+    </select>
+
+    <button class="btn btn-start" id="captureBtn">▶ Start Capture</button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text">
+        <span id="progressFrame">Frame 0 / 0</span>
+        <span id="progressEta">ETA: —</span>
+      </div>
+    </div>
+
+    <div class="status-line" id="statusLine"></div>
+
+    <div class="ffmpeg-box" id="ffmpegBox" title="Click to copy"></div>
+
+    <div class="hint" id="captureHint">
+      Each frame is rendered individually for perfect quality. Output is a ZIP of PNG files. Use ffmpeg (command shown) to convert to video.
+    </div>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="stunt-framework.js"></script>
+  <script src="configs/gemini-vs-deepseek.js"></script>
+  <script src="metrics.js"></script>
+  <script src="race3d.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    const captureBtn = document.getElementById('captureBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressFill = document.getElementById('progressFill');
+    const progressFrame = document.getElementById('progressFrame');
+    const progressEta = document.getElementById('progressEta');
+    const statusLine = document.getElementById('statusLine');
+    const ffmpegBox = document.getElementById('ffmpegBox');
+    const captureHint = document.getElementById('captureHint');
+
+    let capturing = false;
+
+    captureBtn.addEventListener('click', async () => {
+      if (capturing) return;
+      capturing = true;
+
+      const [width, height] = document.getElementById('resolution').value.split('x').map(Number);
+      const fps = parseInt(document.getElementById('fps').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const totalFrames = fps * duration;
+
+      // UI state
+      captureBtn.textContent = '⏹ Capturing...';
+      captureBtn.className = 'btn btn-stop';
+      progressWrap.classList.add('active');
+      progressFill.style.width = '0%';
+      progressFrame.textContent = `Frame 0 / ${totalFrames}`;
+      progressEta.textContent = 'ETA: Calculating...';
+      statusLine.textContent = 'Preparing renderer...';
+      statusLine.className = 'status-line active';
+      ffmpegBox.classList.remove('active');
+      captureHint.style.display = 'none';
+
+      // Set canvas resolution
+      const canvas = document.getElementById('raceCanvas');
+      mgp3d.setResolution(width, height);
+
+      // Prepare sequence
+      mgp3d.prepareCapture();
+
+      // Render first frame to ensure everything is initialized
+      mgp3d.captureFrame(0);
+
+      // Create ZIP
+      const zip = new JSZip();
+      const frameFolder = zip.folder('frames');
+
+      const startTime = performance.now();
+      const frameDt = 1 / fps;
+
+      for (let i = 0; i < totalFrames; i++) {
+        if (!capturing) break;
+
+        // Advance simulation and render one frame
+        mgp3d.captureFrame(frameDt);
+
+        // Capture canvas to blob
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const frameNum = String(i + 1).padStart(5, '0');
+        frameFolder.file(`frame_${frameNum}.png`, blob);
+
+        // Update progress
+        const pct = ((i + 1) / totalFrames) * 100;
+        progressFill.style.width = `${pct.toFixed(1)}%`;
+        progressFrame.textContent = `Frame ${i + 1} / ${totalFrames}`;
+
+        const elapsed = (performance.now() - startTime) / 1000;
+        const fps_actual = (i + 1) / elapsed;
+        const remaining = (totalFrames - i - 1) / fps_actual;
+        const etaMin = Math.floor(remaining / 60);
+        const etaSec = Math.floor(remaining % 60);
+        progressEta.textContent = `ETA: ${etaMin}m ${etaSec}s · ${fps_actual.toFixed(1)} fps`;
+
+        // Yield to browser every 10 frames
+        if (i % 10 === 0) {
+          await new Promise(r => setTimeout(r, 0));
+          statusLine.textContent = `Rendering frame ${i + 1}... (${(blob.size / 1024 / 1024).toFixed(1)} MB)`;
+        }
+      }
+
+      if (capturing) {
+        statusLine.textContent = 'Compressing ZIP...';
+        await new Promise(r => setTimeout(r, 50));
+
+        // Generate ZIP
+        const zipBlob = await zip.generateAsync(
+          { type: 'blob', compression: 'STORE' },
+          (meta) => {
+            if (meta.percent) {
+              statusLine.textContent = `Compressing: ${meta.percent.toFixed(0)}%`;
+            }
+          }
+        );
+
+        // Download ZIP
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `garage-sequence-${width}x${height}-${fps}fps.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        const zipMB = (zipBlob.size / 1024 / 1024).toFixed(1);
+        statusLine.textContent = `✅ Done! ${totalFrames} frames (${zipMB} MB ZIP)`;
+        statusLine.className = 'status-line active success';
+
+        // Show ffmpeg command
+        const padWidth = String(totalFrames).length;
+        const ffmpegCmd = [
+          `# Convert to MP4 (H.264, high quality):`,
+          `ffmpeg -framerate ${fps} -i frames/frame_%05d.png \\`,
+          `  -c:v libx264 -pix_fmt yuv420p -crf 17 \\`,
+          `  -vf "scale=${width}:${height}" output.mp4`,
+          ``,
+          `# Convert to WebM (VP9):`,
+          `ffmpeg -framerate ${fps} -i frames/frame_%05d.png \\`,
+          `  -c:v libvpx-vp9 -crf 20 -b:v 0 output.webm`,
+          ``,
+          `# Convert to ProRes (editing):`,
+          `ffmpeg -framerate ${fps} -i frames/frame_%05d.png \\`,
+          `  -c:v prores_ks -profile:v 3 output.mov`,
+        ].join('\n');
+
+        ffmpegBox.textContent = ffmpegCmd;
+        ffmpegBox.classList.add('active');
+        ffmpegBox.title = 'Click to copy';
+        ffmpegBox.onclick = () => {
+          navigator.clipboard.writeText(ffmpegCmd).then(() => {
+            ffmpegBox.style.borderColor = '#4ade80';
+            setTimeout(() => ffmpegBox.style.borderColor = '', 1000);
+          });
+        };
+
+        captureHint.textContent = '💡 Tip: Extract the ZIP, then run the ffmpeg command above to create your video.';
+        captureHint.style.display = 'block';
+      }
+
+      // Restore
+      mgp3d.finishCapture();
+      capturing = false;
+      captureBtn.textContent = '▶ Capture Again';
+      captureBtn.className = 'btn btn-start';
+    });
+
+    // Initialize
+    window.addEventListener('load', () => {
+      statusLine.textContent = '⚡ Tip: Close other tabs for faster capture. The page may appear frozen during rendering — that is normal.';
+      statusLine.className = 'status-line active';
+    });
+  </script>
+</body>
+</html>

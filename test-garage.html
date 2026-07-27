@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garage Sequence — Record & Download</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* Control panel */
+    .panel {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 1000;
+      background: rgba(8, 10, 8, 0.92);
+      border: 1px solid rgba(216, 255, 81, 0.25);
+      border-radius: 10px;
+      padding: 16px 20px;
+      max-width: 300px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      color: #d8ff51;
+      font-size: 14px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .btn-fullscreen {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      padding: 6px;
+      cursor: pointer;
+      color: #d8ff51;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-fullscreen:hover {
+      background: rgba(255,255,255,0.2);
+      border-color: #d8ff51;
+    }
+
+    .btn-fullscreen:active {
+      transform: scale(0.95);
+    }
+
+    .panel-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .shot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .panel p {
+      margin: 4px 0;
+      font-size: 12px;
+      color: #aaa;
+    }
+    .panel p strong { color: #ddd; }
+
+    .status {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(216, 255, 81, 0.06);
+      border-left: 2px solid #d8ff51;
+      font-size: 12px;
+      color: #ccc;
+      border-radius: 0 4px 4px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .status.recording {
+      border-left-color: #ff4444;
+      background: rgba(255, 68, 68, 0.08);
+      color: #ff8888;
+      font-weight: 600;
+    }
+    .status.done {
+      border-left-color: #4ade80;
+      background: rgba(74, 222, 128, 0.08);
+      color: #86efac;
+    }
+
+    /* Buttons */
+    .btn-group {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 11px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.15s;
+      width: 100%;
+    }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-play {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .btn-play:hover:not(:disabled) {
+      background: rgba(255,255,255,0.14);
+    }
+
+    .btn-record {
+      background: #d8ff51;
+      color: #000;
+    }
+    .btn-record:hover:not(:disabled) {
+      background: #e8ff81;
+    }
+    .btn-record.recording {
+      background: #ff4444;
+      color: #fff;
+      animation: pulse 1.5s infinite;
+    }
+
+    .btn-download {
+      background: #4ade80;
+      color: #000;
+      display: none;
+    }
+    .btn-download.visible {
+      display: block;
+    }
+    .btn-download:hover:not(:disabled) {
+      background: #6ee7a0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Fullscreen optimizations */
+    :fullscreen .panel {
+      max-width: 340px;
+      padding: 20px 24px;
+    }
+
+    :fullscreen .panel h2 {
+      font-size: 16px;
+    }
+
+    :fullscreen .panel p {
+      font-size: 13px;
+    }
+
+    :fullscreen .status {
+      font-size: 13px;
+    }
+
+    :fullscreen .btn {
+      padding: 13px 18px;
+      font-size: 14px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .panel {
+        max-width: 280px;
+        padding: 14px 16px;
+      }
+
+      .panel h2 {
+        font-size: 13px;
+      }
+
+      .panel p {
+        font-size: 11px;
+      }
+
+      .btn {
+        padding: 10px 14px;
+        font-size: 12px;
+      }
+    }
+
+    .timer-bar {
+      margin-top: 8px;
+      height: 3px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+    }
+    .timer-bar.active {
+      display: block;
+    }
+    .timer-fill {
+      height: 100%;
+      background: #ff4444;
+      width: 0%;
+      transition: width 0.1s linear;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h2>🏎️ Garage Sequence</h2>
+      <button class="btn-fullscreen" id="fullscreenBtn" title="Toggle fullscreen">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="shot-list">
+        <p><strong>Shot 1</strong> Garage far shot</p>
+        <p><strong>Shot 2</strong> Backside view</p>
+        <p><strong>Shot 3</strong> Drone view</p>
+        <p><strong>Shot 4</strong> Garage exterior — cars exit</p>
+        <p><strong>Shot 5</strong> Cars pass camera</p>
+        <p><strong>Shot 6</strong> Cars at starting line</p>
+        <p><strong>Shot 7</strong> Racing begins</p>
+      </div>
+
+      <div class="status" id="status">Ready</div>
+
+      <div class="btn-group">
+        <button class="btn btn-record" id="recordBtn">🎬 Record Video (20s)</button>
+        <button class="btn btn-download" id="downloadBtn">💾 Download Video</button>
+        <button class="btn btn-play" id="playBtn">▶ Play Without Recording</button>
+      </div>
+
+      <div class="timer-bar" id="timerBar">
+        <div class="timer-fill" id="timerFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="app" id="app">
+    <section class="view race-view is-active" id="raceView">
+      <div class="race-main">
+        <section class="circuit circuit-3d" id="circuit">
+          <div class="three-stage" id="threeStage">
+            <canvas id="raceCanvas" aria-label="WebGL-rendered race circuit"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="stunt-framework.js"></script>
+  <script src="configs/gemini-vs-deepseek.js"></script>
+  <script src="metrics.js"></script>
+  <script src="race3d.js"></script>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const recordBtn = document.getElementById('recordBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const playBtn = document.getElementById('playBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const timerBar = document.getElementById('timerBar');
+    const timerFill = document.getElementById('timerFill');
+
+    const SEQUENCE_DURATION = 20; // seconds (updated for 7 shots)
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordedBlob = null;
+    let statusInterval = null;
+
+    // ─── Fullscreen toggle ───
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+          fullscreenBtn.title = 'Exit fullscreen';
+        }).catch(err => {
+          console.error('Fullscreen error:', err);
+        });
+      } else {
+        document.exitFullscreen().then(() => {
+          fullscreenBtn.title = 'Enter fullscreen';
+        });
+      }
+    }
+
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    // Update button icon when fullscreen state changes
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement) {
+        fullscreenBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+          </svg>
+        `;
+      } else {
+        fullscreenBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        `;
+      }
+    });
+
+    // Phase monitor
+    function startStatusMonitor() {
+      if (statusInterval) clearInterval(statusInterval);
+      statusInterval = setInterval(() => {
+        if (!window.mgp3d?.getGarageState) return;
+        const state = window.mgp3d.getGarageState();
+        if (state.sequenceStartTime > 0 && state.phase !== 'garage') {
+          const t = state.elapsed.toFixed(1);
+          let shot = '';
+          if (state.phase === 'garage') {
+            if (state.elapsed < 3) shot = 'Shot 1: Garage Far Shot';
+            else if (state.elapsed < 7) shot = 'Shot 2: Backside View';
+            else if (state.elapsed < 11) shot = 'Shot 3: Drone View';
+            else shot = 'Transition';
+          } else if (state.phase === 'garage-to-start') {
+            if (state.elapsed < 15) shot = 'Shot 4: Garage Exterior';
+            else if (state.elapsed < 17) shot = 'Shot 5: Cars Pass Camera';
+            else shot = 'Shot 6: Cars at Starting Line';
+          } else if (state.phase === 'racing') {
+            shot = 'Shot 7: Racing!';
+          }
+          if (!statusEl.classList.contains('recording') && !statusEl.classList.contains('done')) {
+            statusEl.textContent = `${shot} (${t}s)`;
+          }
+        }
+      }, 100);
+    }
+    startStatusMonitor();
+
+    // ─── Play without recording ───
+    playBtn.addEventListener('click', () => {
+      if (mediaRecorder?.state === 'recording') return;
+      statusEl.textContent = 'Playing...';
+      statusEl.className = 'status';
+      recordBtn.disabled = true;
+      playBtn.disabled = true;
+
+      window.mgp3d.activate();
+      window.mgp3d.startGarageSequence();
+
+      setTimeout(() => {
+        statusEl.textContent = 'Done';
+        statusEl.className = 'status done';
+        recordBtn.disabled = false;
+        playBtn.disabled = false;
+      }, SEQUENCE_DURATION * 1000);
+    });
+
+    // ─── Download video (user gesture) ───
+    downloadBtn.addEventListener('click', () => {
+      if (!recordedBlob) {
+        statusEl.textContent = '❌ No video to download';
+        statusEl.className = 'status';
+        return;
+      }
+
+      const url = URL.createObjectURL(recordedBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = `garage-sequence-${timestamp}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+      const mb = (recordedBlob.size / 1024 / 1024).toFixed(1);
+      statusEl.textContent = `✅ Downloaded! (${mb} MB)`;
+      statusEl.className = 'status done';
+    });
+
+    // ─── Record video ───
+    recordBtn.addEventListener('click', async () => {
+      // If already recording, stop early
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        stopRecording();
+        return;
+      }
+
+      const canvas = document.getElementById('raceCanvas');
+      if (!canvas) {
+        alert('Canvas not found!');
+        return;
+      }
+
+      // Reset state
+      statusEl.textContent = 'Starting...';
+      statusEl.className = 'status';
+      recordBtn.disabled = true;
+      playBtn.disabled = true;
+      downloadBtn.classList.remove('visible');
+      recordedBlob = null;
+      timerBar.classList.add('active');
+      timerFill.style.width = '0%';
+      recordedChunks = [];
+
+      try {
+        // Set up MediaRecorder
+        const stream = canvas.captureStream(60);
+
+        // Pick best available codec
+        let mimeType = 'video/webm;codecs=vp9';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/webm;codecs=vp8';
+        }
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/webm';
+        }
+
+        console.log('[Recorder] Using mimeType:', mimeType);
+
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: 8000000
+        });
+
+        mediaRecorder.ondataavailable = (event) => {
+          console.log('[Recorder] Chunk:', event.data.size, 'bytes');
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          console.log('[Recorder] Stopped, chunks:', recordedChunks.length);
+          
+          // Build blob
+          recordedBlob = new Blob(recordedChunks, { type: 'video/webm' });
+          const mb = (recordedBlob.size / 1024 / 1024).toFixed(1);
+          console.log('[Recorder] Blob size:', mb, 'MB');
+
+          if (recordedBlob.size === 0) {
+            statusEl.textContent = '❌ Recording failed (empty video)';
+            statusEl.className = 'status';
+            recordBtn.disabled = false;
+            playBtn.disabled = false;
+            timerBar.classList.remove('active');
+            return;
+          }
+
+          // Show download button (user will click it - this is a user gesture)
+          statusEl.textContent = `✅ Video ready (${mb} MB) — click Download`;
+          statusEl.className = 'status done';
+          recordBtn.textContent = '🎬 Record Video (20s)';
+          recordBtn.classList.remove('recording');
+          recordBtn.disabled = false;
+          playBtn.disabled = false;
+          timerBar.classList.remove('active');
+          downloadBtn.classList.add('visible');
+        };
+
+        mediaRecorder.onerror = (e) => {
+          console.error('[Recorder] Error:', e);
+          statusEl.textContent = '❌ Recording error';
+          statusEl.className = 'status';
+          recordBtn.disabled = false;
+          playBtn.disabled = false;
+          timerBar.classList.remove('active');
+        };
+
+        // Start recording + garage sequence
+        mediaRecorder.start(100); // collect data every 100ms
+
+        statusEl.textContent = '⏺ Recording...';
+        statusEl.className = 'status recording';
+        recordBtn.textContent = '⏹ Stop Early';
+        recordBtn.classList.add('recording');
+        recordBtn.disabled = false; // allow stopping early
+
+        window.mgp3d.activate();
+        window.mgp3d.startGarageSequence();
+
+        // Progress timer
+        const startTime = performance.now();
+        const timerLoop = () => {
+          if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+          const elapsed = (performance.now() - startTime) / 1000;
+          const pct = Math.min(100, (elapsed / SEQUENCE_DURATION) * 100);
+          timerFill.style.width = `${pct}%`;
+
+          const remaining = Math.max(0, SEQUENCE_DURATION - elapsed).toFixed(0);
+          statusEl.textContent = `⏺ Recording... ${remaining}s left`;
+
+          if (elapsed < SEQUENCE_DURATION) {
+            requestAnimationFrame(timerLoop);
+          }
+        };
+        requestAnimationFrame(timerLoop);
+
+        // Auto-stop at end of sequence
+        setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopRecording();
+          }
+        }, SEQUENCE_DURATION * 1000);
+
+      } catch (err) {
+        console.error('[Recorder] Failed to start:', err);
+        statusEl.textContent = `❌ ${err.message}`;
+        statusEl.className = 'status';
+        recordBtn.disabled = false;
+        playBtn.disabled = false;
+        timerBar.classList.remove('active');
+      }
+    });
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        recordBtn.disabled = true;
+        statusEl.textContent = 'Processing video...';
+        mediaRecorder.stop();
+      }
+    }
+
+    // Init
+    window.addEventListener('load', () => {
+      statusEl.textContent = 'Ready — click record to capture and download video';
+    });
+  </script>
+</body>
+</html>

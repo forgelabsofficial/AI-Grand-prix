@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fullscreen Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b0e0c;
+      color: #fff;
+      padding: 20px;
+    }
+    
+    .test-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      margin-bottom: 20px;
+      color: #d8ff51;
+    }
+    
+    .info {
+      background: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    button {
+      background: rgba(4,7,5,.58);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 5px;
+      color: #9aa39c;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: rgba(216,255,81,0.2);
+      border-color: #d8ff51;
+      color: #fff;
+    }
+    
+    button.active {
+      background: rgba(216,255,81,0.1);
+      border-color: #d8ff51;
+      color: #d8ff51;
+    }
+    
+    .log {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 5px;
+      border-left: 3px solid #d8ff51;
+      padding-left: 10px;
+    }
+    
+    .log-entry.error {
+      border-left-color: #ff4444;
+      color: #ff8888;
+    }
+    
+    .log-entry.success {
+      border-left-color: #4ade80;
+      color: #86efac;
+    }
+    
+    .demo-content {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 40px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    :fullscreen .demo-content {
+      background: linear-gradient(135deg, #d8ff51 0%, #b8e031 100%);
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🧪 Fullscreen & Theater Mode Test</h1>
+    
+    <div class="info">
+      <p><strong>Instructions:</strong></p>
+      <p>1. Click "Toggle Fullscreen" to test fullscreen mode</p>
+      <p>2. Click "Toggle Theater" to test theater mode (hides UI)</p>
+      <p>3. Check the log below for detailed information</p>
+      <p>4. Press F11 as an alternative for fullscreen</p>
+    </div>
+    
+    <div class="demo-content">
+      <h2>Demo Area</h2>
+      <p>This area will change appearance in fullscreen mode</p>
+    </div>
+    
+    <div class="buttons">
+      <button id="fullscreenBtn" title="Toggle fullscreen mode (F11)">
+        ⛶ Toggle Fullscreen
+      </button>
+      <button id="theaterBtn" title="Toggle theater mode">
+        🎭 Toggle Theater
+      </button>
+    </div>
+    
+    <div class="log" id="log">
+      <div class="log-entry">Test page loaded. Ready for testing.</div>
+    </div>
+  </div>
+
+  <script>
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const theaterBtn = document.getElementById('theaterBtn');
+    const log = document.getElementById('log');
+
+    function addLog(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      log.insertBefore(entry, log.firstChild);
+      
+      // Keep only last 20 entries
+      while (log.children.length > 20) {
+        log.removeChild(log.lastChild);
+      }
+    }
+
+    // Check fullscreen support
+    function checkFullscreenSupport() {
+      const hasFullscreenAPI = 'fullscreenEnabled' in document || 
+                               'webkitFullscreenEnabled' in document ||
+                               'mozFullScreenEnabled' in document ||
+                               'msFullscreenEnabled' in document;
+      
+      addLog(`Fullscreen API supported: ${hasFullscreenAPI}`, hasFullscreenAPI ? 'success' : 'error');
+      return hasFullscreenAPI;
+    }
+
+    // Toggle fullscreen
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          addLog('Requesting fullscreen...');
+          await document.documentElement.requestFullscreen();
+          addLog('Fullscreen entered successfully', 'success');
+          fullscreenBtn.classList.add('active');
+        } else {
+          addLog('Exiting fullscreen...');
+          await document.exitFullscreen();
+          addLog('Fullscreen exited successfully', 'success');
+          fullscreenBtn.classList.remove('active');
+        }
+      } catch (error) {
+        addLog(`Error: ${error.message}`, 'error');
+        console.error('Fullscreen error:', error);
+      }
+    }
+
+    // Toggle theater mode
+    function toggleTheater() {
+      document.body.classList.toggle('theater-mode');
+      const isActive = document.body.classList.contains('theater-mode');
+      theaterBtn.classList.toggle('active');
+      addLog(`Theater mode ${isActive ? 'enabled' : 'disabled'}`, 'success');
+    }
+
+    // Event listeners
+    fullscreenBtn.addEventListener('click', () => {
+      addLog('Fullscreen button clicked');
+      toggleFullscreen();
+    });
+
+    theaterBtn.addEventListener('click', () => {
+      addLog('Theater button clicked');
+      toggleTheater();
+    });
+
+    // Listen for fullscreen changes
+    document.addEventListener('fullscreenchange', () => {
+      const isFullscreen = !!document.fullscreenElement;
+      addLog(`Fullscreen state changed: ${isFullscreen ? 'ON' : 'OFF'}`, 'success');
+      fullscreenBtn.classList.toggle('active', isFullscreen);
+    });
+
+    // Keyboard shortcut (F11)
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'F11') {
+        event.preventDefault();
+        addLog('F11 pressed');
+        toggleFullscreen();
+      }
+    });
+
+    // Initialize
+    checkFullscreenSupport();
+    addLog('Event listeners attached and ready');
+  </script>
+</body>
+</html>

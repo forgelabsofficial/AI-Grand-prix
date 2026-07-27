@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Gemini vs DeepSeek - Cars</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    .test-info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
+      border-radius: 8px;
+      z-index: 1000;
+    }
+    .test-info h2 {
+      margin: 0 0 10px 0;
+      color: #00ff00;
+    }
+    .test-info pre {
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-info">
+    <h2>🧪 Gemini vs DeepSeek Test</h2>
+    <p>Check if cars appear in the race:</p>
+    <pre id="config-info">Loading...</pre>
+    <p>Expected: 2 cars (Google Gemini & DeepSeek)</p>
+    <p id="car-status">Checking cars...</p>
+  </div>
+
+  <main class="app" id="app">
+    <section class="view race-view is-active" id="raceView">
+      <div class="race-main">
+        <section class="circuit circuit-3d" id="circuit">
+          <div class="three-stage" id="threeStage">
+            <canvas id="raceCanvas" aria-label="WebGL-rendered race circuit"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="stunt-framework.js"></script>
+  <script src="configs/gemini-vs-deepseek.js"></script>
+  <script src="race3d.js"></script>
+  
+  <script>
+    // Check config loaded
+    if (window.RACE_CONFIG) {
+      document.getElementById('config-info').textContent = 
+        `Config: ${window.RACE_CONFIG.name}\n` +
+        `Companies: ${window.RACE_CONFIG.companyOrder.join(', ')}\n` +
+        `Models: ${window.RACE_CONFIG.models.length}`;
+      
+      // Check if cars were created
+      setTimeout(() => {
+        const carStatus = document.getElementById('car-status');
+        if (window.mgp3d) {
+          const telemetry = window.mgp3d.getTelemetry();
+          const carKeys = Object.keys(telemetry);
+          if (carKeys.length === 2 && carKeys.includes('gemini') && carKeys.includes('deepseek')) {
+            carStatus.innerHTML = '<span style="color: #00ff00;">✅ Success! Both cars created.</span>';
+          } else {
+            carStatus.innerHTML = '<span style="color: #ff0000;">❌ Error! Cars: ' + carKeys.join(', ') + '</span>';
+          }
+        } else {
+          carStatus.innerHTML = '<span style="color: #ff0000;">❌ Error! mgp3d not initialized.</span>';
+        }
+      }, 1000);
+    } else {
+      document.getElementById('config-info').textContent = 'ERROR: Config not loaded!';
+      document.getElementById('car-status').innerHTML = '<span style="color: #ff0000;">❌ Config failed to load!</span>';
+    }
+
+    // Start garage sequence after 1 second, then start race after it finishes
+    setTimeout(() => {
+      if (window.mgp3d) {
+        // Start the garage sequence first
+        window.mgp3d.activate();
+        window.mgp3d.startGarageSequence();
+        
+        // After garage sequence completes (12 seconds), start the race
+        setTimeout(() => {
+          if (window.mgp3d) {
+            window.mgp3d.setRunning(true);
+            
+            // Simulate a race payload
+            window.mgp3d.updateRace({
+              time: Date.now(),
+              progress: 0.5,
+              running: true,
+              leader: 'gemini',
+              racers: [
+                {
+                  key: 'gemini',
+                  name: 'Google Gemini',
+                  color: '#4285f4',
+                  active: true,
+                  score: 88,
+                  model: 'Gemini 1.5 Pro'
+                },
+                {
+                  key: 'deepseek',
+                  name: 'DeepSeek',
+                  color: '#6e56cf',
+                  active: true,
+                  score: 85,
+                  model: 'DeepSeek-V3'
+                }
+              ]
+            });
+          }
+        }, 20500);
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

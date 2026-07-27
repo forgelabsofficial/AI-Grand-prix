@@ -1,0 +1,2474 @@
+const canvas = document.getElementById("raceCanvas");
+const stage = document.getElementById("threeStage");
+const loading = document.getElementById("renderLoading");
+const cameraShotLabel = document.getElementById("cameraShot");
+const focusReadout = document.getElementById("focusReadout");
+const directorBanner = document.getElementById("directorBanner");
+const directorKicker = document.getElementById("directorKicker");
+const directorHeadline = document.getElementById("directorHeadline");
+const directorDetail = document.getElementById("directorDetail");
+const cameraCutLayer = document.getElementById("cameraCut");
+const stuntToggle = document.getElementById("stuntsToggle");
+const stuntCard = document.getElementById("stuntCard");
+const stuntCompany = document.getElementById("stuntCompany");
+const stuntCategory = document.getElementById("stuntCategory");
+const stuntModel = document.getElementById("stuntModel");
+const stuntName = document.getElementById("stuntName");
+const stuntDescription = document.getElementById("stuntDescription");
+const stuntPhase = document.getElementById("stuntPhase");
+const stuntProgressBar = document.getElementById("stuntProgressBar");
+const stuntDifficulty = document.getElementById("stuntDifficulty");
+const stuntEvidence = document.getElementById("stuntEvidence");
+const stuntSource = document.getElementById("stuntSource");
+const replayButton = document.getElementById("replayButton");
+const replayOverlay = document.getElementById("replayOverlay");
+const replayReason = document.getElementById("replayReason");
+const replayProgressBar = document.getElementById("replayProgressBar");
+const mapCanvas = document.getElementById("trackMap");
+const mapCtx = mapCanvas?.getContext("2d");
+
+if (!canvas || !stage) {
+  throw new Error("3D race stage is missing.");
+}
+
+// Dynamic company configuration - checks for custom race config
+let COMPANY_ORDER = ["anthropic", "openai", "moonshot"];
+let COMPANY_META = {
+  anthropic: { name: "Anthropic", color: "#ff6b45", lane: -3.6 },
+  openai: { name: "OpenAI", color: "#f4f6f1", lane: 0 },
+  moonshot: { name: "Moonshot AI", color: "#a88cff", lane: 3.6 }
+};
+
+// Override with custom config if provided
+if (window.RACE_CONFIG && window.RACE_CONFIG.companies) {
+  COMPANY_ORDER = window.RACE_CONFIG.companyOrder || Object.keys(window.RACE_CONFIG.companies);
+  const laneWidth = 3.6;
+  const totalCompanies = COMPANY_ORDER.length;
+  COMPANY_META = {};
+  
+  COMPANY_ORDER.forEach((key, index) => {
+    const company = window.RACE_CONFIG.companies[key];
+    COMPANY_META[key] = {
+      name: company.name,
+      color: company.color,
+      lane: (index - (totalCompanies - 1) / 2) * laneWidth
+    };
+  });
+  
+  console.log('[Race3D] Using custom config:', COMPANY_ORDER.join(', '));
+}
+const CAMERA_NAMES = {
+  director: "AUTO DIRECTOR",
+  chase: "CHASE · REAR",
+  cockpit: "ONBOARD · COCKPIT",
+  drone: "DRONE · TOP",
+  trackside: "TRACKSIDE · LONG LENS",
+  orbit: "HELICOPTER · ORBIT",
+  battle: "BATTLE CAM · TWO-CAR",
+  low: "KERB CAM · LOW",
+  front: "REVERSE CHASE · NOSE",
+  crane: "CRANE · CORNER",
+  finishline: "FINISH LINE · STATIC"
+};
+const MANUAL_CAMERAS = ["chase", "cockpit", "drone", "trackside", "orbit"];
+const CINEMATIC_LEVELS = {
+  calm: { label: "CALM", duration: 1.6, whip: false, banners: "events", shake: 0 },
+  broadcast: { label: "BROADCAST", duration: 1, whip: true, banners: "all", shake: 0 },
+  maximum: { label: "CINEMATIC+", duration: 0.7, whip: true, banners: "all", shake: 0.045 }
+};
+const DIRECTOR_PRIORITY = { scheduled: 10, milestone: 35, stunt: 60, pass: 100, finish: 120 };
+const HERO_PHASES = {
+  "logic-leap": [
+    { at: 0, label: "APPROACH", shot: "chase" },
+    { at: 0.18, label: "LAUNCH", shot: "crane" },
+    { at: 0.34, label: "AIRBORNE", shot: "drone" },
+    { at: 0.72, label: "LANDING", shot: "trackside" },
+    { at: 0.91, label: "CLEAN EXIT", shot: "front" }
+  ],
+  "code-drift": [
+    { at: 0, label: "CHICANE ENTRY", shot: "trackside" },
+    { at: 0.22, label: "PATCH DRIFT", shot: "low" },
+    { at: 0.52, label: "SWITCHBACK", shot: "crane" },
+    { at: 0.78, label: "TESTS PASS", shot: "chase" },
+    { at: 0.93, label: "CLEAN EXIT", shot: "front" }
+  ],
+  "tool-swarm": [
+    { at: 0, label: "TOOL SCAN", shot: "front" },
+    { at: 0.2, label: "GATE ONE", shot: "cockpit" },
+    { at: 0.45, label: "PARALLEL TOOLS", shot: "crane" },
+    { at: 0.73, label: "FINAL GATE", shot: "trackside" },
+    { at: 0.92, label: "TASK COMPLETE", shot: "chase" }
+  ],
+  "memory-helix": [
+    { at: 0, label: "ENCODE", shot: "cockpit" },
+    { at: 0.2, label: "MEMORY TUNNEL", shot: "orbit" },
+    { at: 0.5, label: "LONG RECALL", shot: "drone" },
+    { at: 0.78, label: "BEACON FOUND", shot: "front" },
+    { at: 0.93, label: "CONTEXT RETAINED", shot: "chase" }
+  ],
+  "prism-roll": [
+    { at: 0, label: "TEXT SCAN", shot: "front" },
+    { at: 0.2, label: "VISION PRISM", shot: "orbit" },
+    { at: 0.48, label: "MODALITY ROLL", shot: "drone" },
+    { at: 0.76, label: "FUSION", shot: "crane" },
+    { at: 0.93, label: "MULTIMODAL EXIT", shot: "chase" }
+  ],
+  "agent-swarm": [
+    { at: 0, label: "SWARM DEPLOY", shot: "crane" },
+    { at: 0.22, label: "PARALLEL ROLES", shot: "drone" },
+    { at: 0.5, label: "COORDINATED RUN", shot: "battle" },
+    { at: 0.78, label: "SWARM MERGE", shot: "front" },
+    { at: 0.93, label: "TASK COMPLETE", shot: "chase" }
+  ],
+  "endurance-night": [
+    { at: 0, label: "SUNSET", shot: "crane" },
+    { at: 0.2, label: "NIGHT RUN", shot: "chase" },
+    { at: 0.5, label: "AUTONOMOUS HOURS", shot: "trackside" },
+    { at: 0.78, label: "DAWN", shot: "drone" },
+    { at: 0.93, label: "ENDURANCE COMPLETE", shot: "front" }
+  ],
+  "drag-strip": [
+    { at: 0, label: "REACTION LIGHTS", shot: "front" },
+    { at: 0.16, label: "LAUNCH", shot: "low" },
+    { at: 0.42, label: "ACCELERATION", shot: "chase" },
+    { at: 0.74, label: "TOP SPEED", shot: "trackside" },
+    { at: 0.93, label: "TIMING RESULT", shot: "front" }
+  ],
+  "fuel-strategy": [
+    { at: 0, label: "PIT ENTRY", shot: "crane" },
+    { at: 0.22, label: "TOKEN FUEL", shot: "trackside" },
+    { at: 0.5, label: "ENERGY LOAD", shot: "cockpit" },
+    { at: 0.78, label: "COST CHECK", shot: "drone" },
+    { at: 0.93, label: "PIT EXIT", shot: "chase" }
+  ],
+  "open-gate": [
+    { at: 0, label: "LICENSE CHECK", shot: "front" },
+    { at: 0.22, label: "WEIGHTS RELEASED", shot: "crane" },
+    { at: 0.5, label: "SELF-HOST GATE", shot: "cockpit" },
+    { at: 0.78, label: "OPEN GARAGE", shot: "trackside" },
+    { at: 0.93, label: "DEPLOYABLE", shot: "chase" }
+  ]
+};
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const UP = new THREE.Vector3(0, 1, 0);
+const tempA = new THREE.Vector3();
+const tempB = new THREE.Vector3();
+const tempC = new THREE.Vector3();
+const tempD = new THREE.Vector3();
+const tempQuat = new THREE.Quaternion();
+const tempMatrix = new THREE.Matrix4();
+const clock = new THREE.Clock();
+const dayWorldColor = new THREE.Color(0x0b1414);
+const nightWorldColor = new THREE.Color(0x02050d);
+let worldDarkness = 0;
+
+let renderer;
+let scene;
+let camera;
+let circuitCurve;
+let stuntFramework = null;
+let active = false;
+let running = false;
+let initialized = false;
+let reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const compactDevice = window.innerWidth < 820 || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+let currentRace = { progress: 0, time: 0, profile: "overall", leader: null, racers: [] };
+let selectedCamera = "director";
+let cinematicLevel = "broadcast";
+let actualShot = "chase";
+let focusCompany = null;
+let directorFocus = null;
+let directorSecondary = null;
+let directorNextSwitch = 0;
+let directorIndex = 0;
+let directorCutCount = 0;
+let directorQueue = [];
+let directorLock = { owner: null, priority: 0, until: 0 };
+let lastLeader = null;
+let lastLeaderScore = 0;
+let pendingLeadChange = null;
+let activePass = null;
+const passCooldown = new Map();
+let physicalLeaderKey = null;
+let stuntsEnabled = true;
+let activeStunt = null;
+let stuntQueue = [];
+let stuntSequence = 0;
+const stuntCooldown = new Map();
+let cameraSnapPending = false;
+let elapsed = 0;
+const replayBuffer = [];
+const REPLAY_BUFFER_SECONDS = 7;
+const REPLAY_CAPTURE_FPS = 20;
+const MIN_REPLAY_FRAMES = 8;
+const REPLAY_RATE = 0.6;
+let replayCaptureAccumulator = 0;
+let replayWallTime = 0;
+let replayState = null;
+let autoReplayTimer = null;
+let tracksideAnchor = new THREE.Vector3();
+let finishlineAnchor = new THREE.Vector3();
+let tracksideReady = false;
+let finishlineReady = false;
+let finishMode = false;
+let finishWinner = null;
+let renderHandle = 0;
+let garageGroup = null;
+let raceSequencePhase = 'garage'; // 'garage', 'transition', 'countdown', 'racing'
+let sequenceStartTime = 0;
+const cars = new Map();
+const lastShownAt = new Map(COMPANY_ORDER.map((key) => [key, -Infinity]));
+const cameraLook = new THREE.Vector3();
+const desiredCamera = new THREE.Vector3();
+const desiredLook = new THREE.Vector3();
+
+function seededRandom(seed = 20260723) {
+  let value = seed >>> 0;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+const random = seededRandom();
+
+function makeRenderer() {
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: false,
+    powerPreference: "high-performance"
+  });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  renderer.shadowMap.enabled = !reducedMotion && !compactDevice;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compactDevice ? 1 : 1.35));
+}
+
+function makeScene() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b1414);
+  scene.fog = new THREE.FogExp2(0x0b1414, 0.0068);
+
+  camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);
+  camera.position.set(-91, 10, 21);
+  cameraLook.set(-80, 0, 5);
+
+  const hemi = new THREE.HemisphereLight(0xcce9df, 0x1d241d, 1.65);
+  scene.add(hemi);
+
+  const sun = new THREE.DirectionalLight(0xfff4d6, 2.5);
+  sun.position.set(60, 90, -50);
+  sun.castShadow = !reducedMotion && !compactDevice;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -120;
+  sun.shadow.camera.right = 120;
+  sun.shadow.camera.top = 100;
+  sun.shadow.camera.bottom = -100;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 260;
+  sun.shadow.bias = -0.0002;
+  scene.add(sun);
+
+  const rim = new THREE.DirectionalLight(0x7fa8ff, 1.1);
+  rim.position.set(-70, 35, 70);
+  scene.add(rim);
+
+  const horizonGlow = new THREE.PointLight(0xd8ff51, 45, 160, 2);
+  horizonGlow.position.set(170, 24, -45);
+  scene.add(horizonGlow);
+}
+
+function makeCurve() {
+  const points = [
+    new THREE.Vector3(-108, 0, 10),
+    new THREE.Vector3(-86, 0, -14),
+    new THREE.Vector3(-58, 1.2, -37),
+    new THREE.Vector3(-27, 2.1, -31),
+    new THREE.Vector3(2, 0.4, -7),
+    new THREE.Vector3(24, 3.5, 22),
+    new THREE.Vector3(52, 1.4, 34),
+    new THREE.Vector3(82, 0.2, 16),
+    new THREE.Vector3(105, 2.8, -18),
+    new THREE.Vector3(132, 3.6, -41),
+    new THREE.Vector3(161, 1.4, -37),
+    new THREE.Vector3(188, 0.4, -14),
+    new THREE.Vector3(216, 1.2, 13)
+  ];
+  circuitCurve = new THREE.CatmullRomCurve3(points, false, "catmullrom", 0.28);
+  circuitCurve.arcLengthDivisions = 1200;
+  circuitCurve.updateArcLengths();
+}
+
+function ribbonGeometry(width, yOffset = 0, segments = 520) {
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const p = circuitCurve.getPointAt(t);
+    const tangent = circuitCurve.getTangentAt(t).normalize();
+    const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const left = p.clone().addScaledVector(side, width / 2);
+    const right = p.clone().addScaledVector(side, -width / 2);
+    left.y += yOffset;
+    right.y += yOffset;
+    positions.push(left.x, left.y, left.z, right.x, right.y, right.z);
+    normals.push(0, 1, 0, 0, 1, 0);
+    uvs.push(0, t * 42, 1, t * 42);
+    if (i < segments) {
+      const a = i * 2;
+      indices.push(a, a + 2, a + 1, a + 2, a + 3, a + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function placeAlong(object, t, lateral = 0, height = 0, scale = null) {
+  const p = circuitCurve.getPointAt(t);
+  const tangent = circuitCurve.getTangentAt(t).normalize();
+  const side = tempA.set(-tangent.z, 0, tangent.x).normalize();
+  object.position.copy(p).addScaledVector(side, lateral);
+  object.position.y += height;
+  object.quaternion.setFromUnitVectors(X_AXIS, tangent);
+  if (scale) object.scale.copy(scale);
+  object.updateMatrix();
+  return { p, tangent: tangent.clone(), side: side.clone() };
+}
+
+function createTrack() {
+  const terrain = new THREE.Mesh(
+    new THREE.PlaneGeometry(720, 430, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x1c281c, roughness: 1, metalness: 0 })
+  );
+  terrain.rotation.x = -Math.PI / 2;
+  terrain.position.set(50, -0.45, -5);
+  terrain.receiveShadow = true;
+  scene.add(terrain);
+
+  const shoulder = new THREE.Mesh(
+    ribbonGeometry(22, -0.08),
+    new THREE.MeshStandardMaterial({ color: 0x4d5350, roughness: 1, metalness: 0 })
+  );
+  shoulder.receiveShadow = true;
+  scene.add(shoulder);
+
+  const road = new THREE.Mesh(
+    ribbonGeometry(17.2, 0.03),
+    new THREE.MeshStandardMaterial({ color: 0x202522, roughness: 0.78, metalness: 0.08 })
+  );
+  road.receiveShadow = true;
+  scene.add(road);
+
+  createLaneMarks();
+  createCurbs();
+  createBarriers();
+  createStartFinish();
+  createDistanceBoards();
+  createScenery();
+}
+
+function createLaneMarks() {
+  const geometry = new THREE.BoxGeometry(2.35, 0.035, 0.085);
+  const material = new THREE.MeshBasicMaterial({ color: 0xe8eee5, transparent: true, opacity: 0.72 });
+  const offsets = [-2.75, 2.75];
+  const count = 58 * offsets.length;
+  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  let index = 0;
+  offsets.forEach((offset) => {
+    for (let i = 0; i < 58; i++) {
+      const t = 0.012 + i / 58 * 0.974;
+      placeAlong(mesh, t, offset, 0.10);
+      tempMatrix.compose(mesh.position, mesh.quaternion, new THREE.Vector3(1, 1, 1));
+      mesh.setMatrixAt(index++, tempMatrix);
+    }
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
+}
+
+function createCurbs() {
+  const geometry = new THREE.BoxGeometry(1.8, 0.16, 0.82);
+  const red = new THREE.MeshStandardMaterial({ color: 0xe34231, roughness: 0.7 });
+  const cream = new THREE.MeshStandardMaterial({ color: 0xf2ede0, roughness: 0.7 });
+  const redMesh = new THREE.InstancedMesh(geometry, red, 184);
+  const whiteMesh = new THREE.InstancedMesh(geometry, cream, 184);
+  let redIndex = 0;
+  let whiteIndex = 0;
+  for (let i = 0; i < 184; i++) {
+    const t = 0.004 + i / 184 * 0.992;
+    [-9.02, 9.02].forEach((offset, sideIndex) => {
+      const target = (i + sideIndex) % 2 === 0 ? redMesh : whiteMesh;
+      placeAlong(target, t, offset, 0.09);
+      tempMatrix.compose(target.position, target.quaternion, new THREE.Vector3(1, 1, 1));
+      if (target === redMesh) redMesh.setMatrixAt(redIndex++, tempMatrix);
+      else whiteMesh.setMatrixAt(whiteIndex++, tempMatrix);
+    });
+  }
+  redMesh.count = redIndex;
+  whiteMesh.count = whiteIndex;
+  redMesh.instanceMatrix.needsUpdate = true;
+  whiteMesh.instanceMatrix.needsUpdate = true;
+  redMesh.receiveShadow = whiteMesh.receiveShadow = true;
+  scene.add(redMesh, whiteMesh);
+}
+
+function createBarriers() {
+  const geometry = new THREE.BoxGeometry(2.2, 0.7, 0.25);
+  const material = new THREE.MeshStandardMaterial({ color: 0xbec4bd, roughness: 0.55, metalness: 0.45 });
+  const countPerSide = 145;
+  const mesh = new THREE.InstancedMesh(geometry, material, countPerSide * 2);
+  for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
+    const offset = sideIndex === 0 ? -11.1 : 11.1;
+    for (let i = 0; i < countPerSide; i++) {
+      const t = i / (countPerSide - 1);
+      placeAlong(mesh, t, offset, 0.35);
+      tempMatrix.compose(mesh.position, mesh.quaternion, new THREE.Vector3(1, 1, 1));
+      mesh.setMatrixAt(sideIndex * countPerSide + i, tempMatrix);
+    }
+  }
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
+}
+
+function createStartFinish() {
+  const group = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({ color: 0xe9eee7, roughness: 0.6 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x111512, roughness: 0.8 });
+  const acid = new THREE.MeshStandardMaterial({ color: 0xd8ff51, emissive: 0x35420b, emissiveIntensity: 1.3 });
+  const lineT = 0.976;
+  const p = circuitCurve.getPointAt(lineT);
+  const tangent = circuitCurve.getTangentAt(lineT).normalize();
+  const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(X_AXIS, tangent);
+
+  for (let i = 0; i < 10; i++) {
+    const tile = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 1.62), i % 2 ? white : black);
+    tile.position.copy(p).addScaledVector(side, -7.3 + i * 1.62);
+    tile.position.y += 0.12;
+    tile.quaternion.copy(q);
+    tile.receiveShadow = true;
+    scene.add(tile);
+  }
+
+  [-10.6, 10.6].forEach((offset) => {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 8.4, 0.55), black);
+    pillar.position.copy(p).addScaledVector(side, offset);
+    pillar.position.y += 4.1;
+    pillar.castShadow = true;
+    scene.add(pillar);
+  });
+  const gantry = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.8, 21.8), black);
+  gantry.position.copy(p);
+  gantry.position.y += 8.1;
+  gantry.quaternion.copy(q);
+  gantry.castShadow = true;
+  scene.add(gantry);
+
+  const board = new THREE.Mesh(new THREE.BoxGeometry(0.72, 2.5, 9.2), acid);
+  board.position.copy(p).addScaledVector(tangent, -0.1);
+  board.position.y += 8.1;
+  board.quaternion.copy(q);
+  scene.add(board);
+
+  const label = makeTextSprite("MODEL GP · FRONTIER", "#d8ff51", 512, 96, false);
+  label.position.copy(p).addScaledVector(tangent, -0.7);
+  label.position.y += 8.2;
+  label.scale.set(10, 1.9, 1);
+  scene.add(label);
+}
+
+function createDistanceBoards() {
+  [0.25, 0.5, 0.75].forEach((t, index) => {
+    const p = circuitCurve.getPointAt(t);
+    const tangent = circuitCurve.getTangentAt(t).normalize();
+    const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 2.7, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0xcdd3ca, roughness: 0.6 })
+    );
+    post.position.copy(p).addScaledVector(side, -13);
+    post.position.y += 1.25;
+    scene.add(post);
+    const sprite = makeTextSprite(`${(index + 1) * 25}  PACE`, "#eef2e8", 320, 96);
+    sprite.position.copy(post.position);
+    sprite.position.y += 1.55;
+    sprite.scale.set(4.8, 1.45, 1);
+    scene.add(sprite);
+  });
+}
+
+function createScenery() {
+  const trunkGeometry = new THREE.CylinderGeometry(0.16, 0.24, 2.1, 7);
+  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x463829, roughness: 1 });
+  const leafGeometry = new THREE.ConeGeometry(1.4, 4.2, 8);
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x1b492d, roughness: 1 });
+  const treeCount = 145;
+  const trunks = new THREE.InstancedMesh(trunkGeometry, trunkMaterial, treeCount);
+  const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, treeCount);
+  for (let i = 0; i < treeCount; i++) {
+    const t = random();
+    const p = circuitCurve.getPointAt(t);
+    const tangent = circuitCurve.getTangentAt(t).normalize();
+    const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const sign = random() > 0.5 ? 1 : -1;
+    const offset = sign * (17 + random() * 35);
+    const size = 0.65 + random() * 1.2;
+    const position = p.clone().addScaledVector(side, offset);
+    position.x += (random() - 0.5) * 8;
+    position.z += (random() - 0.5) * 8;
+    tempMatrix.compose(position.clone().add(new THREE.Vector3(0, 0.7 * size, 0)), new THREE.Quaternion(), new THREE.Vector3(size, size, size));
+    trunks.setMatrixAt(i, tempMatrix);
+    tempMatrix.compose(position.clone().add(new THREE.Vector3(0, 3.0 * size, 0)), new THREE.Quaternion(), new THREE.Vector3(size, size, size));
+    leaves.setMatrixAt(i, tempMatrix);
+  }
+  trunks.castShadow = leaves.castShadow = !reducedMotion;
+  trunks.receiveShadow = leaves.receiveShadow = true;
+  scene.add(trunks, leaves);
+
+  const buildingGeometry = new THREE.BoxGeometry(1, 1, 1);
+  const buildingMaterial = new THREE.MeshStandardMaterial({ color: 0x273130, roughness: 0.85, metalness: 0.15 });
+  const buildingCount = 48;
+  const buildings = new THREE.InstancedMesh(buildingGeometry, buildingMaterial, buildingCount);
+  for (let i = 0; i < buildingCount; i++) {
+    const x = -120 + random() * 360;
+    const z = random() > 0.5 ? 70 + random() * 70 : -75 - random() * 55;
+    const height = 5 + random() * 24;
+    const width = 4 + random() * 8;
+    tempMatrix.compose(
+      new THREE.Vector3(x, height / 2 - 0.2, z),
+      new THREE.Quaternion(),
+      new THREE.Vector3(width, height, width * (0.65 + random() * 0.8))
+    );
+    buildings.setMatrixAt(i, tempMatrix);
+  }
+  buildings.castShadow = !reducedMotion;
+  buildings.receiveShadow = true;
+  scene.add(buildings);
+
+  createGrandstands();
+  createLightPoles();
+}
+
+function createGrandstands() {
+  [0.08, 0.43, 0.86].forEach((t, idx) => {
+    const p = circuitCurve.getPointAt(t);
+    const tangent = circuitCurve.getTangentAt(t).normalize();
+    const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const group = new THREE.Group();
+    for (let row = 0; row < 5; row++) {
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(13, 0.45, 1.2),
+        new THREE.MeshStandardMaterial({ color: row % 2 ? 0x343d38 : 0x59625b, roughness: 0.8 })
+      );
+      step.position.set(0, row * 0.55, row * 0.85);
+      step.castShadow = true;
+      group.add(step);
+    }
+    group.position.copy(p).addScaledVector(side, idx % 2 ? 17 : -18);
+    group.position.y += 0.2;
+    group.quaternion.setFromUnitVectors(X_AXIS, tangent);
+    if (idx % 2 === 0) group.rotateY(Math.PI);
+    scene.add(group);
+  });
+}
+
+function createLightPoles() {
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x6f7770, roughness: 0.45, metalness: 0.65 });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xe8ffd1 });
+  for (let i = 0; i < 18; i++) {
+    const t = 0.03 + i / 18 * 0.93;
+    const p = circuitCurve.getPointAt(t);
+    const tangent = circuitCurve.getTangentAt(t).normalize();
+    const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const offset = i % 2 ? 14 : -14;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 7, 7), poleMat);
+    pole.position.copy(p).addScaledVector(side, offset);
+    pole.position.y += 3.3;
+    scene.add(pole);
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.3), glowMat);
+    lamp.position.copy(pole.position);
+    lamp.position.y += 3.35;
+    lamp.quaternion.setFromUnitVectors(X_AXIS, tangent);
+    scene.add(lamp);
+  }
+}
+
+function createGarage() {
+  garageGroup = new THREE.Group();
+  garageGroup.position.set(-50, 0, 0);
+  
+  // Floor
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0;
+  floor.receiveShadow = true;
+  garageGroup.add(floor);
+  
+  // Back wall
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.7 });
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(40, 10, 0.5), wallMat);
+  backWall.position.set(0, 5, -15);
+  backWall.castShadow = true;
+  backWall.receiveShadow = true;
+  garageGroup.add(backWall);
+  
+  // Side walls
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 30), wallMat);
+  leftWall.position.set(-20, 5, 0);
+  leftWall.castShadow = true;
+  leftWall.receiveShadow = true;
+  garageGroup.add(leftWall);
+  
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 30), wallMat);
+  rightWall.position.set(20, 5, 0);
+  rightWall.castShadow = true;
+  rightWall.receiveShadow = true;
+  garageGroup.add(rightWall);
+  
+  // Ceiling
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), wallMat);
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = 10;
+  ceiling.receiveShadow = true;
+  garageGroup.add(ceiling);
+  
+  // Garage door (front) - will animate open
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.6 });
+  const garageDoor = new THREE.Mesh(new THREE.BoxGeometry(40, 10, 0.3), doorMat);
+  garageDoor.position.set(0, 5, 15);
+  garageDoor.userData.isDoor = true;
+  garageGroup.add(garageDoor);
+  
+  // Interior lighting
+  const light1 = new THREE.PointLight(0xffffff, 2, 20);
+  light1.position.set(-10, 8, 0);
+  garageGroup.add(light1);
+  
+  const light2 = new THREE.PointLight(0xffffff, 2, 20);
+  light2.position.set(10, 8, 0);
+  garageGroup.add(light2);
+  
+  // Position cars in garage
+  const laneWidth = 8;
+  const totalCompanies = COMPANY_ORDER.length;
+  COMPANY_ORDER.forEach((key, index) => {
+    const car = cars.get(key);
+    if (car) {
+      const xPos = (index - (totalCompanies - 1) / 2) * laneWidth;
+      car.position.set(xPos, 0.5, -10);
+      car.userData.garagePosition = { x: xPos, y: 0.5, z: -10 };
+      car.userData.targetPosition = null;
+      car.visible = true;
+    }
+  });
+  
+  scene.add(garageGroup);
+}
+
+function animateGarageSequence(elapsed) {
+  if (!garageGroup || raceSequencePhase === 'racing') return;
+  
+  const sequenceDuration = 8; // Total sequence: 8 seconds
+  const doorOpenTime = 2; // Door opens over first 2 seconds
+  const transitionTime = 4; // Black fade at 4 seconds
+  const carsOutTime = 6; // Cars move out between 4-6 seconds
+  const finishTime = 8; // Sequence complete at 8 seconds
+  
+  if (elapsed < doorOpenTime) {
+    // Phase 1: Open garage door
+    raceSequencePhase = 'garage';
+    const progress = elapsed / doorOpenTime;
+    const door = garageGroup.children.find(child => child.userData.isDoor);
+    if (door) {
+      door.position.y = 5 + progress * 10; // Move door up
+    }
+  } else if (elapsed < transitionTime) {
+    // Phase 2: Fade to black
+    raceSequencePhase = 'transition';
+    const progress = (elapsed - doorOpenTime) / (transitionTime - doorOpenTime);
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.Fog(0x000000, 0.001, 50);
+  } else if (elapsed < carsOutTime) {
+    // Phase 3: Move cars to start positions
+    raceSequencePhase = 'garage-to-start';
+    const progress = (elapsed - transitionTime) / (carsOutTime - transitionTime);
+    const eased = easeInOutCubic(progress);
+    
+    const laneWidth = 3.6;
+    const totalCompanies = COMPANY_ORDER.length;
+    COMPANY_ORDER.forEach((key, index) => {
+      const car = cars.get(key);
+      if (car && car.userData.garagePosition) {
+        const targetLane = (index - (totalCompanies - 1) / 2) * laneWidth;
+        const startX = car.userData.garagePosition.x - 50; // Offset by garage position
+        const targetX = targetLane;
+        
+        car.position.x = startX + (targetX - startX) * eased;
+        car.position.z = -10 + 10 * eased; // Move forward
+        car.position.y = 0.5;
+      }
+    });
+    
+    // Fade back from black
+    const fadeProgress = progress;
+    const gray = Math.floor(fadeProgress * 11); // 0 to 11 (dark to medium gray)
+    scene.background = new THREE.Color(gray / 255, gray / 255, gray / 255);
+    scene.fog = new THREE.Fog(0x0b1414, 0.001, 50 + fadeProgress * 450);
+  } else if (elapsed < finishTime) {
+    // Phase 4: Final fade to normal
+    raceSequencePhase = 'transition';
+    const progress = (elapsed - carsOutTime) / (finishTime - carsOutTime);
+    const gray = Math.floor(11 + progress * 244); // 11 to 255
+    scene.background = new THREE.Color(gray / 255, gray / 255, gray / 255);
+    scene.fog = new THREE.Fog(0x0b1414, 0.001, 500);
+  } else {
+    // Phase 5: Start countdown
+    raceSequencePhase = 'countdown';
+    scene.background = new THREE.Color(0x0b1414);
+    scene.fog = new THREE.Fog(0x0b1414, 0.001, 500);
+  }
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function makeTextSprite(text, color, width = 512, height = 128, panel = true) {
+  const labelCanvas = document.createElement("canvas");
+  labelCanvas.width = width;
+  labelCanvas.height = height;
+  const ctx = labelCanvas.getContext("2d");
+  if (panel) {
+    ctx.fillStyle = "rgba(5, 8, 6, .82)";
+    ctx.roundRect(3, 3, width - 6, height - 6, 18);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+  ctx.fillStyle = color;
+  ctx.font = `700 ${Math.round(height * 0.34)}px Arial, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, width / 2, height / 2 + 1, width - 28);
+  const texture = new THREE.CanvasTexture(labelCanvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.userData.labelCanvas = labelCanvas;
+  sprite.userData.labelTexture = texture;
+  return sprite;
+}
+
+function updateCarLabel(car, racer) {
+  if (!car || !racer) return;
+  const signature = `${racer.model}|${racer.score}`;
+  if (car.userData.labelSignature === signature) return;
+  car.userData.labelSignature = signature;
+  const sprite = car.userData.label;
+  const labelCanvas = sprite.userData.labelCanvas;
+  const ctx = labelCanvas.getContext("2d");
+  const color = COMPANY_META[racer.key].color;
+  ctx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+  ctx.fillStyle = "rgba(5, 8, 6, .86)";
+  ctx.roundRect(3, 3, labelCanvas.width - 6, labelCanvas.height - 6, 18);
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = "700 18px Arial, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(COMPANY_META[racer.key].name.toUpperCase(), 22, 28);
+  ctx.textAlign = "right";
+  ctx.fillText(`${Math.round(racer.score)} PACE`, labelCanvas.width - 22, 28);
+
+  ctx.fillStyle = "#f4f6f1";
+  ctx.font = "700 30px Arial, sans-serif";
+  ctx.textAlign = "center";
+  const modelName = racer.model.length > 30 ? `${racer.model.slice(0, 29)}…` : racer.model;
+  ctx.fillText(modelName, labelCanvas.width / 2, 70, labelCanvas.width - 42);
+  sprite.userData.labelTexture.needsUpdate = true;
+}
+
+function carMaterial(color, overrides = {}) {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    roughness: 0.25,
+    metalness: 0.55,
+    ...overrides
+  });
+}
+
+function createCar(key) {
+  const meta = COMPANY_META[key];
+  const group = new THREE.Group();
+  group.name = `${meta.name} race car`;
+  group.userData.key = key;
+  group.userData.currentT = 0.012;
+  group.userData.targetT = 0.012;
+  group.userData.seasonT = 0.012;
+  group.userData.lastSeasonT = 0.012;
+  group.userData.currentGap = 0;
+  group.userData.targetGap = 0;
+  group.userData.velocity = 0;
+  group.userData.active = false;
+  group.userData.boost = 0;
+  group.userData.wheels = [];
+
+  const bodyMat = carMaterial(meta.color);
+  const darkMat = carMaterial("#0b0e0c", { roughness: 0.5, metalness: 0.25 });
+  const glassMat = carMaterial("#93b3bd", { roughness: 0.1, metalness: 0.25, transparent: true, opacity: 0.82 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: 0x101410, roughness: 0.45, metalness: 0.4 });
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.24, 2.1), darkMat);
+  floor.position.y = 0.36;
+  floor.castShadow = true;
+  group.add(floor);
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3.55, 0.68, 1.78), bodyMat);
+  body.position.set(0, 0.72, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.38, 1.25), bodyMat);
+  nose.position.set(2.25, 0.62, 0);
+  nose.scale.set(1, 0.8, 0.78);
+  nose.castShadow = true;
+  group.add(nose);
+
+  const noseTip = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.72), accentMat);
+  noseTip.position.set(3.2, 0.53, 0);
+  group.add(noseTip);
+
+  const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.68, 1.28), glassMat);
+  cockpit.position.set(-0.38, 1.26, 0);
+  cockpit.rotation.z = -0.08;
+  cockpit.castShadow = true;
+  group.add(cockpit);
+
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.075, 7, 18, Math.PI), accentMat);
+  halo.rotation.set(Math.PI / 2, 0, Math.PI / 2);
+  halo.position.set(-0.25, 1.55, 0);
+  group.add(halo);
+
+  const rearWing = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 2.65), bodyMat);
+  rearWing.position.set(-2.35, 1.35, 0);
+  rearWing.castShadow = true;
+  group.add(rearWing);
+  [-0.78, 0.78].forEach((z) => {
+    const support = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.12), accentMat);
+    support.position.set(-2.24, 0.95, z);
+    group.add(support);
+  });
+
+  const frontWing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 2.7), bodyMat);
+  frontWing.position.set(3.05, 0.38, 0);
+  group.add(frontWing);
+
+  const wheelGeometry = new THREE.CylinderGeometry(0.48, 0.48, 0.46, 18);
+  const tireMat = new THREE.MeshStandardMaterial({ color: 0x050605, roughness: 0.88, metalness: 0.05 });
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0xaab3aa, roughness: 0.28, metalness: 0.85 });
+  [[-1.35, -1.12], [-1.35, 1.12], [1.45, -1.12], [1.45, 1.12]].forEach(([x, z]) => {
+    const wheelGroup = new THREE.Group();
+    const tire = new THREE.Mesh(wheelGeometry, tireMat);
+    tire.rotation.x = Math.PI / 2;
+    tire.castShadow = true;
+    wheelGroup.add(tire);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.48, 16), rimMat);
+    rim.rotation.x = Math.PI / 2;
+    wheelGroup.add(rim);
+    wheelGroup.position.set(x, 0.48, z);
+    group.userData.wheels.push(wheelGroup);
+    group.add(wheelGroup);
+  });
+
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff8a2f, transparent: true, opacity: 0.85, depthWrite: false });
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.42, 2.2, 12), flameMat);
+  flame.rotation.z = Math.PI / 2;
+  flame.position.set(-3.15, 0.58, 0);
+  flame.visible = false;
+  group.userData.flame = flame;
+  group.add(flame);
+
+  const boostLight = new THREE.PointLight(new THREE.Color(meta.color), 0, 12, 2);
+  boostLight.position.set(-2, 1.2, 0);
+  group.userData.boostLight = boostLight;
+  group.add(boostLight);
+
+  // Dynamic label heights based on company order
+  const labelHeights = {};
+  COMPANY_ORDER.forEach((key, index) => {
+    labelHeights[key] = 3.25 + (index * 0.9);
+  });
+  const labelY = labelHeights[key];
+  const stalk = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 1.7, 0),
+      new THREE.Vector3(0, labelY - 0.5, 0)
+    ]),
+    new THREE.LineBasicMaterial({ color: new THREE.Color(meta.color), transparent: true, opacity: 0.5, depthTest: false })
+  );
+  stalk.renderOrder = 18;
+  group.userData.labelStalk = stalk;
+  group.add(stalk);
+
+  const label = makeTextSprite(meta.name.toUpperCase(), meta.color, 512, 104);
+  label.position.set(0, labelY, 0);
+  label.scale.set(5.8, 1.18, 1);
+  label.renderOrder = 20;
+  group.userData.label = label;
+  group.add(label);
+
+  const stuntRing = new THREE.Mesh(
+    new THREE.TorusGeometry(2.45, 0.075, 8, 44),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(meta.color), transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  stuntRing.rotation.y = Math.PI / 2;
+  stuntRing.visible = false;
+  stuntRing.renderOrder = 16;
+  group.userData.stuntRing = stuntRing;
+  group.add(stuntRing);
+
+  const droneGroup = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const drone = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.24, 0),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(meta.color), transparent: true, opacity: 0.9 })
+    );
+    droneGroup.add(drone);
+  }
+  droneGroup.visible = false;
+  group.userData.stuntDrones = droneGroup;
+  group.add(droneGroup);
+
+  const smokeGroup = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const puff = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28 + i * 0.06, 7, 5),
+      new THREE.MeshBasicMaterial({ color: 0xc9d0c8, transparent: true, opacity: 0.2, depthWrite: false })
+    );
+    smokeGroup.add(puff);
+  }
+  smokeGroup.visible = false;
+  group.userData.stuntSmoke = smokeGroup;
+  group.add(smokeGroup);
+
+  placeCar(group, 0.012, meta.lane);
+  group.visible = false;
+  scene.add(group);
+  cars.set(key, group);
+  return group;
+}
+
+function placeCar(car, t, lane) {
+  const point = circuitCurve.getPointAt(clamp(t, 0.001, 0.995));
+  const tangent = circuitCurve.getTangentAt(clamp(t, 0.001, 0.995)).normalize();
+  const side = tempA.set(-tangent.z, 0, tangent.x).normalize();
+  car.position.copy(point).addScaledVector(side, lane);
+  car.position.y += 0.14;
+  car.quaternion.setFromUnitVectors(X_AXIS, tangent);
+}
+
+function createCars() {
+  COMPANY_ORDER.forEach(createCar);
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function raceClock() {
+  return clamp(currentRace.progress || 0, 0, 1) * 31;
+}
+
+function resizeRenderer() {
+  if (!renderer || !camera) return;
+  const rect = stage.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return;
+  renderer.setSize(rect.width, rect.height, false);
+  camera.aspect = rect.width / rect.height;
+  camera.updateProjectionMatrix();
+}
+
+function vec3Array(vector) { return [vector.x, vector.y, vector.z]; }
+function quatArray(quaternion) { return [quaternion.x, quaternion.y, quaternion.z, quaternion.w]; }
+
+function snapshotScene(time = elapsed) {
+  const racers = Object.fromEntries((currentRace.racers || []).map((racer) => [racer.key, { ...racer }]));
+  const carStates = {};
+  cars.forEach((car, key) => {
+    carStates[key] = {
+      position: vec3Array(car.position),
+      quaternion: quatArray(car.quaternion),
+      visible: car.visible,
+      wheels: car.userData.wheels.map((wheel) => wheel.rotation.z),
+      flameVisible: car.userData.flame.visible,
+      model: racers[key]?.model || "",
+      score: racers[key]?.score || 0,
+      active: racers[key]?.active || false
+    };
+  });
+  return {
+    time,
+    cars: carStates,
+    camera: { position: vec3Array(camera.position), quaternion: quatArray(camera.quaternion), fov: camera.fov },
+    background: scene.background ? [scene.background.r, scene.background.g, scene.background.b] : [0, 0, 0],
+    fog: scene.fog ? [scene.fog.color.r, scene.fog.color.g, scene.fog.color.b] : [0, 0, 0],
+    exposure: renderer.toneMappingExposure,
+    stunt: activeStunt ? {
+      signature: activeStunt.signature,
+      type: activeStunt.type,
+      progress: activeStunt.progress,
+      localProgress: activeStunt.localProgress,
+      visualTime: activeStunt.visualTime,
+      startT: activeStunt.startT,
+      endT: activeStunt.endT,
+      lane: COMPANY_META[activeStunt.company].lane,
+      company: activeStunt.company,
+      color: COMPANY_META[activeStunt.company].color,
+      difficulty: (activeStunt.categoryScore ?? 80) / 100
+    } : null
+  };
+}
+
+function captureReplayFrame(dt) {
+  if (!active || !running || replayState || reducedMotion || compactDevice) return;
+  replayCaptureAccumulator += dt;
+  const interval = 1 / REPLAY_CAPTURE_FPS;
+  if (replayCaptureAccumulator < interval) return;
+  replayCaptureAccumulator %= interval;
+  replayBuffer.push(snapshotScene(replayWallTime));
+  const cutoff = replayWallTime - REPLAY_BUFFER_SECONDS;
+  while (replayBuffer.length && replayBuffer[0].time < cutoff) replayBuffer.shift();
+  if (replayButton) replayButton.disabled = replayBuffer.length < MIN_REPLAY_FRAMES;
+}
+
+function applyReplayFrame(a, b = a, alpha = 0) {
+  Object.entries(a.cars).forEach(([key, stateA]) => {
+    const car = cars.get(key);
+    const stateB = b.cars[key] || stateA;
+    if (!car) return;
+    car.visible = stateA.visible;
+    car.position.fromArray(stateA.position).lerp(tempA.fromArray(stateB.position), alpha);
+    car.quaternion.fromArray(stateA.quaternion).slerp(tempQuat.fromArray(stateB.quaternion), alpha);
+    car.userData.wheels.forEach((wheel, index) => {
+      const zA = stateA.wheels[index] || 0, zB = stateB.wheels[index] || zA;
+      wheel.rotation.z = zA + (zB - zA) * alpha;
+    });
+    car.userData.flame.visible = stateA.flameVisible;
+    if (stateA.model) updateCarLabel(car, { key, model: stateA.model, score: stateA.score });
+  });
+  camera.position.fromArray(a.camera.position).lerp(tempB.fromArray(b.camera.position), alpha);
+  camera.quaternion.fromArray(a.camera.quaternion).slerp(tempQuat.fromArray(b.camera.quaternion), alpha);
+  camera.fov = a.camera.fov + (b.camera.fov - a.camera.fov) * alpha;
+  camera.updateProjectionMatrix();
+  scene.background.setRGB(
+    a.background[0] + (b.background[0] - a.background[0]) * alpha,
+    a.background[1] + (b.background[1] - a.background[1]) * alpha,
+    a.background[2] + (b.background[2] - a.background[2]) * alpha
+  );
+  if (scene.fog) scene.fog.color.setRGB(
+    a.fog[0] + (b.fog[0] - a.fog[0]) * alpha,
+    a.fog[1] + (b.fog[1] - a.fog[1]) * alpha,
+    a.fog[2] + (b.fog[2] - a.fog[2]) * alpha
+  );
+  renderer.toneMappingExposure = a.exposure + (b.exposure - a.exposure) * alpha;
+
+  const replayStunt = alpha < .5 ? a.stunt : b.stunt;
+  if (replayStunt) {
+    if (replayState?.stuntSignature !== replayStunt.signature) {
+      stuntFramework?.show({
+        type: replayStunt.type, startT: replayStunt.startT, endT: replayStunt.endT,
+        lane: replayStunt.lane, color: replayStunt.color, difficulty: replayStunt.difficulty
+      });
+      if (replayState) replayState.stuntSignature = replayStunt.signature;
+    }
+    stuntFramework?.update(replayStunt.localProgress, replayStunt.visualTime);
+  } else {
+    stuntFramework?.hide();
+    if (replayState) replayState.stuntSignature = null;
+  }
+}
+
+function startReplay(reason = "LAST ACTION", seconds = 5, automatic = false) {
+  if (replayState || reducedMotion || compactDevice || replayBuffer.length < MIN_REPLAY_FRAMES) return false;
+  const last = replayBuffer[replayBuffer.length - 1];
+  const firstAllowed = last.time - Math.min(seconds, REPLAY_BUFFER_SECONDS);
+  let frames = replayBuffer.filter((frame) => frame.time >= firstAllowed);
+  if (frames.length < Math.max(6, MIN_REPLAY_FRAMES - 2)) frames = replayBuffer.slice();
+  if (frames.length < Math.max(6, MIN_REPLAY_FRAMES - 2)) return false;
+  const liveState = snapshotScene(elapsed);
+  const resume = running;
+  replayState = {
+    frames, liveState, resume, automatic, reason,
+    firstTime: frames[0].time,
+    lastTime: frames[frames.length - 1].time,
+    playhead: 0, index: 0, stuntSignature: null
+  };
+  stage.classList.add("is-replaying");
+  stage.closest(".circuit")?.classList.add("replay-active");
+  if (replayOverlay) replayOverlay.hidden = false;
+  if (replayReason) replayReason.textContent = reason;
+  if (replayProgressBar) replayProgressBar.style.width = "0%";
+  if (replayButton) { replayButton.classList.add("is-on"); replayButton.setAttribute("aria-pressed", "true"); }
+  window.mgpAudio?.setReplay?.(true);
+  window.dispatchEvent(new CustomEvent("mgp-replay-start", { detail: { resume, reason, automatic } }));
+  applyReplayFrame(frames[0]);
+  return true;
+}
+
+function restoreLiveStunt() {
+  if (!activeStunt) { stuntFramework?.hide(); return; }
+  stuntFramework?.show({
+    type: activeStunt.type, startT: activeStunt.startT, endT: activeStunt.endT,
+    lane: COMPANY_META[activeStunt.company].lane, color: COMPANY_META[activeStunt.company].color,
+    difficulty: (activeStunt.categoryScore ?? 80) / 100
+  });
+  stuntFramework?.update(activeStunt.localProgress, activeStunt.visualTime);
+}
+
+function endReplay({ cancelled = false } = {}) {
+  if (!replayState) return;
+  const { liveState, resume } = replayState;
+  replayState = null;
+  applyReplayFrame(liveState);
+  restoreLiveStunt();
+  stage.classList.remove("is-replaying");
+  stage.closest(".circuit")?.classList.remove("replay-active");
+  if (replayOverlay) replayOverlay.hidden = true;
+  if (replayButton) { replayButton.classList.remove("is-on"); replayButton.setAttribute("aria-pressed", "false"); }
+  window.mgpAudio?.setReplay?.(false);
+  window.dispatchEvent(new CustomEvent("mgp-replay-ended", { detail: { resume: cancelled ? false : resume, cancelled } }));
+}
+
+function updateReplay(dt) {
+  if (!replayState) return;
+  replayState.playhead += dt * REPLAY_RATE;
+  const targetTime = replayState.firstTime + replayState.playhead;
+  const duration = Math.max(.001, replayState.lastTime - replayState.firstTime);
+  const progress = Math.max(0, Math.min(1, replayState.playhead / duration));
+  if (replayProgressBar) replayProgressBar.style.width = `${Math.round(progress * 100)}%`;
+  while (replayState.index < replayState.frames.length - 2 && replayState.frames[replayState.index + 1].time <= targetTime) replayState.index++;
+  const a = replayState.frames[replayState.index];
+  const b = replayState.frames[Math.min(replayState.frames.length - 1, replayState.index + 1)];
+  const alpha = b.time > a.time ? Math.max(0, Math.min(1, (targetTime - a.time) / (b.time - a.time))) : 0;
+  applyReplayFrame(a, b, alpha);
+  if (progress >= 1) endReplay();
+}
+
+function scheduleAutoReplay(reason) {
+  if (cinematicLevel !== "maximum" || reducedMotion || replayState || replayBuffer.length < MIN_REPLAY_FRAMES) return;
+  clearTimeout(autoReplayTimer);
+  autoReplayTimer = window.setTimeout(() => startReplay(reason, 4.5, true), 420);
+}
+
+function updateRace(payload) {
+  const previousLeader = currentRace.leader;
+  currentRace = payload;
+  running = Boolean(payload.running);
+  const activeRacers = payload.racers.filter((racer) => racer.active);
+  const leaderScore = activeRacers.length ? Math.max(...activeRacers.map((racer) => racer.score)) : 0;
+  const seasonPosition = 0.018 + clamp(payload.progress, 0, 1) * 0.958;
+
+  payload.racers.forEach((racer) => {
+    const car = cars.get(racer.key);
+    if (!car) return;
+    const wasActive = car.userData.active;
+    car.userData.active = racer.active;
+    const evidenceGap = Math.max(0, leaderScore - racer.score);
+    car.userData.seasonT = seasonPosition;
+    car.userData.targetGap = racer.active ? evidenceGap * 0.0022 : 0;
+    car.userData.targetT = racer.active
+      ? clamp(seasonPosition - car.userData.targetGap, 0.012, 0.976)
+      : 0.012;
+    car.visible = racer.active || (car.userData.boost > 0 && wasActive);
+    updateCarLabel(car, racer);
+    if (!wasActive && racer.active) {
+      car.userData.currentGap = car.userData.targetGap + 0.028;
+      car.userData.currentT = clamp(seasonPosition - car.userData.currentGap, 0.012, 0.976);
+      car.userData.lastSeasonT = seasonPosition;
+      car.userData.velocity = 0;
+      car.userData.boost = Math.max(car.userData.boost, 1.5);
+    }
+    if (!running && racer.active) {
+      car.userData.currentGap = car.userData.targetGap;
+      car.userData.currentT = car.userData.targetT;
+      car.userData.lastSeasonT = seasonPosition;
+      car.userData.velocity = 0;
+    }
+  });
+
+  const firstActive = payload.racers.find((r) => r.active)?.key || null;
+  if (!focusCompany || !cars.get(focusCompany)?.userData.active) focusCompany = payload.leader || firstActive;
+  if (!directorFocus || !cars.get(directorFocus)?.userData.active) directorFocus = payload.leader || firstActive;
+
+  if (payload.leader && !lastLeader) {
+    lastLeader = payload.leader;
+    lastLeaderScore = payload.racers.find((r) => r.key === payload.leader)?.score || 0;
+  } else if (payload.leader && payload.leader !== lastLeader && payload.progress > 0.015) {
+    pendingLeadChange = {
+      newLeader: payload.leader,
+      oldLeader: lastLeader,
+      detectedAt: raceClock()
+    };
+    lastLeader = payload.leader;
+    lastLeaderScore = payload.racers.find((r) => r.key === payload.leader)?.score || 0;
+  } else if (payload.leader) {
+    lastLeader = payload.leader;
+    lastLeaderScore = payload.racers.find((r) => r.key === payload.leader)?.score || lastLeaderScore;
+  }
+
+  if (selectedCamera === "director" && previousLeader !== payload.leader && payload.leader) directorNextSwitch = Math.min(directorNextSwitch, raceClock() + 0.18);
+  updateFocusReadout();
+}
+
+function updateStuntToggleUI() {
+  if (!stuntToggle) return;
+  stuntToggle.classList.toggle("is-on", stuntsEnabled);
+  stuntToggle.setAttribute("aria-pressed", String(stuntsEnabled));
+  const status = stuntToggle.querySelector("small");
+  if (status) status.textContent = stuntsEnabled ? "ON" : "OFF";
+}
+
+function setStuntsEnabled(value) {
+  stuntsEnabled = Boolean(value);
+  updateStuntToggleUI();
+  if (!stuntsEnabled) {
+    stuntQueue = [];
+    endActiveStunt(false);
+  } else if (active && running) {
+    showDirectorBanner({ kicker: "STUNT CONTROL", headline: "RESEARCH STUNTS ENABLED", detail: "Capability milestones can now trigger visual stunts", color: "#d8ff51", duration: 2.4 });
+  }
+  return stuntsEnabled;
+}
+
+function toggleStunts() {
+  return setStuntsEnabled(!stuntsEnabled);
+}
+
+function performStunt(company, detail = {}) {
+  if (!stuntsEnabled || !detail.type || !cars.has(company)) return false;
+  const signature = `${company}:${detail.modelId || detail.name}`;
+  const cooldownKey = `${company}:${detail.type}`;
+  if ((stuntCooldown.get(cooldownKey) || 0) > currentRace.progress) return false;
+  if (activeStunt?.signature === signature || stuntQueue.some((item) => item.signature === signature)) return false;
+  const categoryPriority = ["REASONING", "AGENTS", "MULTI-AGENT"].includes(detail.category) ? 74 : ["LONG CONTEXT", "CODING"].includes(detail.category) ? 68 : 62;
+  stuntQueue.push({
+    company,
+    ...detail,
+    signature,
+    cooldownKey,
+    priority: detail.priority || categoryPriority,
+    sequence: ++stuntSequence,
+    queuedAt: currentRace.progress,
+    expiresAt: currentRace.progress + (detail.expiresAfterProgress || 0.18)
+  });
+  stuntQueue.sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
+  stuntQueue = stuntQueue.slice(0, 8);
+  return true;
+}
+
+function showStuntCard(stunt) {
+  if (!stuntCard) return;
+  const meta = COMPANY_META[stunt.company];
+  stuntCard.style.setProperty("--stunt-color", meta.color);
+  stuntCompany.textContent = meta.name.toUpperCase();
+  stuntCategory.textContent = stunt.category || "CAPABILITY";
+  stuntModel.textContent = `${stunt.model || "Current model"} · USED STUNT${stunt.resumed ? " · RESUMED" : ""}`;
+  stuntName.textContent = stunt.name || "RESEARCH STUNT";
+  stuntDescription.textContent = stunt.description || "A documented capability milestone is represented as a visual stunt.";
+  const score = Math.round(stunt.categoryScore ?? 80);
+  if (stuntPhase) stuntPhase.textContent = stunt.resumed ? "RESUMING" : "APPROACH";
+  if (stuntProgressBar) stuntProgressBar.style.width = `${Math.round((stunt.progress || 0) * 100)}%`;
+  if (stuntDifficulty) stuntDifficulty.textContent = `${score}`;
+  if (stuntEvidence) stuntEvidence.textContent = `${stunt.rawEvidence || stunt.category || "Capability evidence"} · normalized ${score}/100`;
+  if (stuntSource) stuntSource.textContent = stunt.sourceIds?.length ? `SOURCE ${stunt.sourceIds.map((id) => `#${id}`).join(" · ")}` : "RESEARCH SOURCE";
+  stuntCard.hidden = false;
+}
+
+function hideStuntCard() {
+  if (stuntCard) stuntCard.hidden = true;
+}
+
+function resetStuntEffects(car) {
+  if (!car) return;
+  if (car.userData.stuntRing) {
+    car.userData.stuntRing.visible = false;
+    car.userData.stuntRing.position.set(0, 0, 0);
+    car.userData.stuntRing.scale.set(1, 1, 1);
+  }
+  if (car.userData.stuntDrones) car.userData.stuntDrones.visible = false;
+  if (car.userData.stuntSmoke) car.userData.stuntSmoke.visible = false;
+}
+
+function endActiveStunt(requeue = false) {
+  if (!activeStunt) return;
+  const car = cars.get(activeStunt.company);
+  resetStuntEffects(car);
+  if (requeue && activeStunt.progress < 0.93) {
+    const replay = {
+      ...activeStunt,
+      resumeFrom: activeStunt.progress,
+      sequence: ++stuntSequence,
+      queuedAt: currentRace.progress,
+      expiresAt: currentRace.progress + 0.14
+    };
+    delete replay.startedAt;
+    delete replay.startT;
+    delete replay.endT;
+    delete replay.pathLength;
+    delete replay.progress;
+    delete replay.visualTime;
+    stuntQueue.unshift(replay);
+  } else if (activeStunt.cooldownKey) {
+    stuntCooldown.set(activeStunt.cooldownKey, currentRace.progress + 0.07);
+  }
+  activeStunt = null;
+  releaseDirectorLock("stunt");
+  stuntFramework?.hide();
+  hideStuntCard();
+}
+
+function interruptStuntForPass() {
+  if (activeStunt) endActiveStunt(true);
+}
+
+function startNextStunt() {
+  if (!stuntsEnabled || activeStunt || activePass || finishMode || !running || !stuntQueue.length) return;
+  directorLockActive();
+  if (directorLock.owner && directorLock.priority > DIRECTOR_PRIORITY.stunt) return;
+  stuntQueue = stuntQueue.filter((item) => item.expiresAt > currentRace.progress);
+  if (!stuntQueue.length) return;
+  const stunt = stuntQueue.shift();
+  const car = cars.get(stunt.company);
+  if (!car?.visible) return;
+  const durations = { "logic-leap": 2.9, "code-drift": 2.6, "prism-roll": 3.1, "tool-swarm": 3.1, "agent-swarm": 3.4, "memory-helix": 3.2, "endurance-night": 4.0, "drag-strip": 3.0, "fuel-strategy": 3.3, "open-gate": 2.9 };
+  const baseLengths = { "logic-leap": 0.072, "code-drift": 0.068, "prism-roll": 0.076, "tool-swarm": 0.082, "agent-swarm": 0.09, "memory-helix": 0.09, "endurance-night": 0.11, "drag-strip": 0.09, "fuel-strategy": 0.075, "open-gate": 0.067 };
+  const difficulty = Math.max(0.25, Math.min(1, (stunt.categoryScore ?? 80) / 100));
+  const resumeFrom = Math.max(0, Math.min(0.95, stunt.resumeFrom || 0));
+  const fullPathLength = (baseLengths[stunt.type] || 0.07) * (0.86 + difficulty * 0.18);
+  const remainingLength = Math.max(0.008, fullPathLength * (1 - resumeFrom));
+  const startT = car.userData.currentT;
+  const endT = Math.min(0.979, startT + remainingLength);
+  activeStunt = {
+    ...stunt,
+    resumeFrom,
+    resumed: resumeFrom > 0,
+    startedAt: elapsed,
+    startT,
+    endT,
+    pathLength: Math.max(0.0001, endT - startT),
+    duration: durations[stunt.type] || 2.8,
+    progress: resumeFrom,
+    localProgress: 0,
+    visualTime: 0,
+    heroPhase: -1
+  };
+  stuntFramework?.show({
+    type: activeStunt.type,
+    startT: activeStunt.startT,
+    endT: activeStunt.endT,
+    resumeFrom: activeStunt.resumeFrom,
+    lane: COMPANY_META[activeStunt.company].lane,
+    color: COMPANY_META[activeStunt.company].color,
+    difficulty
+  });
+  showStuntCard(activeStunt);
+  directorQueue = [];
+  const shotByType = { "prism-roll": "orbit", "open-gate": "front" };
+  if (HERO_PHASES[activeStunt.type]) {
+    updateHeroPhase(true);
+  } else if (selectedCamera === "director") {
+    applyDirectorTake({
+      shot: shotByType[activeStunt.type] || "chase",
+      focus: activeStunt.company,
+      duration: activeStunt.duration,
+      cut: "hard",
+      kind: "stunt",
+      lockPriority: DIRECTOR_PRIORITY.stunt
+    }, true);
+  } else {
+    acquireDirectorLock("stunt", DIRECTOR_PRIORITY.stunt, activeStunt.duration);
+  }
+  window.mgpAudio?.stunt?.(activeStunt.company, activeStunt.type);
+}
+
+function updateHeroPhase(force = false) {
+  if (!activeStunt) return;
+  const phases = HERO_PHASES[activeStunt.type];
+  if (!phases) return;
+  let phaseIndex = 0;
+  for (let i = 0; i < phases.length; i++) if (activeStunt.progress >= phases[i].at) phaseIndex = i;
+  if (!force && phaseIndex === activeStunt.heroPhase) return;
+  activeStunt.heroPhase = phaseIndex;
+  const phase = phases[phaseIndex];
+  if (stuntPhase) stuntPhase.textContent = `${activeStunt.resumed && force ? "RESUMED · " : ""}${phase.label}`;
+  window.mgpAudio?.stuntPhase?.(activeStunt.company, activeStunt.type, phase.label);
+
+  const cutIndexes = cinematicLevel === "calm" ? [0, 3] : cinematicLevel === "maximum" ? [0, 1, 2, 4] : [0, 2, 4];
+  const shouldCut = force || cutIndexes.includes(phaseIndex);
+  if (!shouldCut) return;
+  const nextCutIndex = cutIndexes.find((index) => index > phaseIndex);
+  const nextAt = nextCutIndex != null ? phases[nextCutIndex].at : 1;
+  const phaseDuration = Math.max(0.45, (nextAt - activeStunt.progress) * activeStunt.duration);
+  if (selectedCamera === "director") {
+    applyDirectorTake({
+      shot: phase.shot,
+      focus: activeStunt.company,
+      duration: phaseDuration,
+      cut: phaseIndex % 2 ? "whip" : "hard",
+      kind: "stunt",
+      lockPriority: DIRECTOR_PRIORITY.stunt
+    }, true);
+  } else {
+    acquireDirectorLock("stunt", DIRECTOR_PRIORITY.stunt, phaseDuration);
+  }
+}
+
+function updateStuntLifecycle(dt) {
+  if (!activeStunt) {
+    startNextStunt();
+    return;
+  }
+  const car = cars.get(activeStunt.company);
+  if (!car?.visible) {
+    endActiveStunt(true);
+    return;
+  }
+  if (running) activeStunt.visualTime += dt;
+  activeStunt.localProgress = Math.max(0, Math.min(1, (car.userData.currentT - activeStunt.startT) / activeStunt.pathLength));
+  activeStunt.progress = activeStunt.resumeFrom + activeStunt.localProgress * (1 - activeStunt.resumeFrom);
+  if (stuntProgressBar) stuntProgressBar.style.width = `${Math.round(activeStunt.progress * 100)}%`;
+  updateHeroPhase(false);
+  stuntFramework?.update(activeStunt.localProgress, activeStunt.visualTime);
+  if (activeStunt.progress >= 0.999) {
+    const replayLabel = `${activeStunt.name || activeStunt.type} · ${COMPANY_META[activeStunt.company].name}`;
+    const shouldAutoReplay = cinematicLevel === "maximum" && stuntQueue.length === 0 && !activePass;
+    endActiveStunt(false);
+    if (shouldAutoReplay) scheduleAutoReplay(replayLabel);
+    startNextStunt();
+  }
+}
+
+function applyStuntTransform(car, key) {
+  if (!activeStunt || activeStunt.company !== key) return;
+  const p = activeStunt.progress;
+  const smooth = p * p * (3 - 2 * p);
+  const arc = Math.sin(Math.PI * p);
+  const tangent = circuitCurve.getTangentAt(car.userData.currentT).normalize();
+  const side = tempC.set(-tangent.z, 0, tangent.x).normalize();
+  const ring = car.userData.stuntRing;
+  const drones = car.userData.stuntDrones;
+  const smoke = car.userData.stuntSmoke;
+  const extension = stuntFramework?.samplePath(activeStunt.type, p) || { height: 0, lateral: 0, pitch: 0, roll: 0, yaw: 0 };
+  const resumeBlend = activeStunt.resumed ? Math.max(0, Math.min(1, activeStunt.localProgress / 0.12)) : 1;
+  car.position.y += extension.height * resumeBlend;
+  car.position.addScaledVector(side, extension.lateral * resumeBlend);
+  if (extension.pitch) car.rotateZ(extension.pitch * resumeBlend);
+  if (extension.roll) car.rotateX(extension.roll * resumeBlend);
+  if (extension.yaw) car.rotateY(extension.yaw * resumeBlend);
+
+  if (activeStunt.type === "logic-leap") {
+    ring.visible = true;
+    ring.rotation.x = activeStunt.visualTime * 2.8;
+    ring.scale.setScalar(0.75 + arc * 0.45);
+  } else if (activeStunt.type === "code-drift") {
+    smoke.visible = true;
+    smoke.children.forEach((puff, index) => {
+      puff.position.set(-2.3 - index * 0.42, 0.2 + index * 0.08, (index % 2 ? 1 : -1) * (0.55 + index * 0.08));
+      puff.scale.setScalar(0.65 + arc * (0.8 + index * 0.12));
+      puff.material.opacity = 0.08 + arc * 0.18;
+    });
+  } else if (activeStunt.type === "prism-roll") {
+    ring.visible = true;
+    ring.rotation.x = Math.PI * 2 * smooth;
+    ring.rotation.z = activeStunt.visualTime * 3.5;
+    ring.scale.setScalar(0.8 + arc * 0.8);
+  } else if (["tool-swarm", "agent-swarm"].includes(activeStunt.type)) {
+    drones.visible = true;
+    drones.children.forEach((drone, index) => {
+      const angle = activeStunt.visualTime * (activeStunt.type === "agent-swarm" ? 4.2 : 3.1) + index * Math.PI / 2;
+      const split = activeStunt.type === "agent-swarm" ? Math.sin(Math.PI * p) : 1;
+      const radius = (2.0 + Math.sin(activeStunt.visualTime * 2 + index) * 0.25) * split;
+      drone.position.set(Math.cos(angle) * radius, 1.5 + Math.sin(angle * 2) * 0.45 * split, Math.sin(angle) * radius);
+      drone.rotation.x += 0.08;
+      drone.rotation.y += 0.11;
+    });
+  } else if (activeStunt.type === "memory-helix") {
+    ring.visible = true;
+    ring.rotation.x = activeStunt.visualTime * 4;
+    ring.rotation.z = Math.PI * 2 * smooth;
+    ring.scale.setScalar(0.65 + arc * 1.05);
+  } else if (activeStunt.type === "open-gate") {
+    ring.visible = true;
+    ring.position.x = 4.8 - p * 8.5;
+    ring.rotation.y = Math.PI / 2;
+    ring.rotation.z = activeStunt.visualTime * 1.4;
+    ring.scale.setScalar(1.1 + arc * 0.55);
+  } else if (activeStunt.type === "endurance-night") {
+    car.userData.flame.visible = p < 0.18 || p > 0.82;
+  } else if (activeStunt.type === "drag-strip") {
+    car.userData.flame.visible = p > 0.08 && p < 0.78;
+    car.userData.flame.scale.x = 0.9 + Math.sin(activeStunt.visualTime * 36) * 0.22;
+  } else if (activeStunt.type === "fuel-strategy") {
+    car.userData.flame.visible = p > 0.72;
+  }
+}
+
+function updateAdvancedWorldEffects(dt) {
+  const targetDarkness = activeStunt?.type === "endurance-night" ? Math.sin(Math.PI * activeStunt.localProgress) * 0.94 : 0;
+  worldDarkness += (targetDarkness - worldDarkness) * (1 - Math.exp(-dt * 4.2));
+  scene.background.copy(dayWorldColor).lerp(nightWorldColor, worldDarkness);
+  scene.fog.color.copy(dayWorldColor).lerp(nightWorldColor, worldDarkness);
+  renderer.toneMappingExposure = 1.12 - worldDarkness * 0.42;
+  cars.forEach((car) => {
+    if (car.userData.boostLight && car.userData.boost <= 0) car.userData.boostLight.intensity = activeStunt?.type === "endurance-night" && car.userData.active ? worldDarkness * 4.5 : 0;
+  });
+}
+
+function updateCars(dt) {
+  updateStuntLifecycle(dt);
+  cars.forEach((car, key) => {
+    if (!car.userData.active && car.userData.boost <= 0) {
+      car.visible = false;
+      return;
+    }
+    car.visible = true;
+    const previousT = car.userData.currentT;
+    const baseAdvance = Math.max(0, car.userData.seasonT - car.userData.lastSeasonT);
+    car.userData.lastSeasonT = car.userData.seasonT;
+    const forwardCorrection = Math.max(0, car.userData.targetT - car.userData.currentT);
+    const catchupRate = reducedMotion ? 18 : 6.2;
+    const catchupAdvance = forwardCorrection * (1 - Math.exp(-catchupRate * dt));
+    const minimumForward = baseAdvance * 0.74;
+    const advance = running ? Math.max(minimumForward, catchupAdvance) : 0;
+    car.userData.currentT = clamp(previousT + Math.max(0, advance), 0.008, 0.982);
+    car.userData.currentGap = Math.max(0, car.userData.seasonT - car.userData.currentT);
+    const step = car.userData.currentT - previousT;
+    car.userData.velocity = dt > 0 ? step / dt : 0;
+    placeCar(car, car.userData.currentT, COMPANY_META[key].lane);
+
+    const wheelSpeed = Math.abs(step) * 880 + (running ? 2.2 * dt : 0);
+    car.userData.wheels.forEach((wheel) => { wheel.rotation.z -= wheelSpeed; });
+    car.userData.boost = Math.max(0, car.userData.boost - dt);
+    const boosting = car.userData.boost > 0;
+    car.userData.flame.visible = boosting;
+    car.userData.flame.scale.x = boosting ? 0.65 + Math.sin(elapsed * 42) * 0.22 : 0.1;
+    car.userData.boostLight.intensity = boosting ? 10 + Math.sin(elapsed * 30) * 3 : 0;
+
+    const bob = running ? Math.sin(elapsed * 15 + COMPANY_ORDER.indexOf(key)) * 0.025 : 0;
+    car.position.y += bob;
+    applyStuntTransform(car, key);
+  });
+  updateAdvancedWorldEffects(dt);
+  updatePhysicalLeaderHud();
+  updatePredictivePass();
+}
+
+function updatePhysicalLeaderHud() {
+  const leaderNode = document.getElementById("raceLeader");
+  if (!leaderNode) return;
+  const physicalOrder = [...cars.entries()]
+    .filter(([, car]) => car.userData.active && car.visible)
+    .sort((a, b) => b[1].userData.currentT - a[1].userData.currentT || (racerInfo(b[0])?.score || 0) - (racerInfo(a[0])?.score || 0));
+  physicalLeaderKey = physicalOrder.length ? physicalOrder[0][0] : null;
+  leaderNode.textContent = physicalLeaderKey ? COMPANY_META[physicalLeaderKey].name.toUpperCase() : "IN THE PITS";
+}
+
+function racerInfo(key) {
+  return currentRace.racers?.find((racer) => racer.key === key) || null;
+}
+
+function completePass(pass, position) {
+  const passer = racerInfo(pass.passer);
+  const target = racerInfo(pass.target);
+  directorQueue = [];
+  applyDirectorTake({
+    shot: position === 1 ? "front" : "chase",
+    focus: pass.passer,
+    secondary: pass.target,
+    duration: 2.55,
+    cut: "hard",
+    kind: "pass-complete",
+    kicker: position === 1 ? "NEW RACE LEADER" : "PASS COMPLETE",
+    headline: `${passer?.name || COMPANY_META[pass.passer].name} TAKES P${position}`,
+    detail: `${passer?.model || "The attacking model"} moves ahead of ${target?.name || COMPANY_META[pass.target].name}`
+  }, true);
+  passCooldown.set(`${pass.passer}>${pass.target}`, raceClock() + 4.5);
+  if (position === 1 && pendingLeadChange?.newLeader === pass.passer) pendingLeadChange = null;
+  activePass = null;
+  scheduleAutoReplay(`OVERTAKE · ${passer?.name || COMPANY_META[pass.passer].name} TAKES P${position}`);
+}
+
+function updatePredictivePass() {
+  if (!active || !running || finishMode || selectedCamera !== "director") return;
+
+  if (activePass) {
+    const passerCar = cars.get(activePass.passer);
+    const targetCar = cars.get(activePass.target);
+    if (!passerCar?.visible || !targetCar?.visible) {
+      activePass = null;
+      releaseDirectorLock("pass");
+      return;
+    }
+    const gap = targetCar.userData.currentT - passerCar.userData.currentT;
+    if (activePass.phase === "approach" && gap <= 0.014 && gap > 0.0007) {
+      activePass.phase = "side-by-side";
+      const passer = racerInfo(activePass.passer);
+      const target = racerInfo(activePass.target);
+      applyDirectorTake({
+        shot: "battle",
+        focus: activePass.passer,
+        secondary: activePass.target,
+        duration: 1.85,
+        cut: "whip",
+        kind: "pass-battle",
+        kicker: `BATTLE FOR P${activePass.position}`,
+        headline: `${passer?.name || COMPANY_META[activePass.passer].name} GOES SIDE BY SIDE`,
+        detail: `${passer?.model || "Attacker"} alongside ${target?.model || "the car ahead"}`
+      }, true);
+    }
+    if (gap <= 0.0007) {
+      completePass(activePass, activePass.position);
+      return;
+    }
+    if (raceClock() - activePass.startedAt > 6.5) {
+      passCooldown.set(`${activePass.passer}>${activePass.target}`, raceClock() + 2.5);
+      activePass = null;
+      releaseDirectorLock("pass");
+    }
+    return;
+  }
+
+  if (pendingLeadChange) {
+    const newCar = cars.get(pendingLeadChange.newLeader);
+    const oldCar = cars.get(pendingLeadChange.oldLeader);
+    if (newCar?.visible && oldCar?.visible && newCar.userData.currentT >= oldCar.userData.currentT - 0.0007) {
+      interruptStuntForPass();
+      completePass({ passer: pendingLeadChange.newLeader, target: pendingLeadChange.oldLeader }, 1);
+      return;
+    }
+  }
+
+  const desiredOrder = (currentRace.racers || [])
+    .filter((racer) => racer.active)
+    .sort((a, b) => b.score - a.score || COMPANY_ORDER.indexOf(a.key) - COMPANY_ORDER.indexOf(b.key));
+  let candidate = null;
+  for (let desiredIndex = 0; desiredIndex < desiredOrder.length; desiredIndex++) {
+    const passer = desiredOrder[desiredIndex];
+    const passerCar = cars.get(passer.key);
+    if (!passerCar?.visible) continue;
+    for (let targetIndex = desiredIndex + 1; targetIndex < desiredOrder.length; targetIndex++) {
+      const target = desiredOrder[targetIndex];
+      const targetCar = cars.get(target.key);
+      if (!targetCar?.visible || passer.score <= target.score + 0.2) continue;
+      const physicalGap = targetCar.userData.currentT - passerCar.userData.currentT;
+      const certainByTarget = passerCar.userData.targetT > targetCar.userData.targetT + 0.0005;
+      const relativeSpeed = passerCar.userData.velocity - targetCar.userData.velocity;
+      const eta = relativeSpeed > 0.0001 ? physicalGap / relativeSpeed : Infinity;
+      const key = `${passer.key}>${target.key}`;
+      if (physicalGap > 0.0007 && certainByTarget && (eta < 3.2 || physicalGap < 0.045) && (passCooldown.get(key) || 0) <= raceClock()) {
+        const option = { passer, target, physicalGap, eta, position: desiredIndex + 1, key };
+        if (!candidate || option.position < candidate.position || (option.position === candidate.position && option.physicalGap < candidate.physicalGap)) candidate = option;
+      }
+    }
+  }
+  if (!candidate) return;
+
+  interruptStuntForPass();
+  activePass = {
+    passer: candidate.passer.key,
+    target: candidate.target.key,
+    position: candidate.position,
+    phase: "approach",
+    startedAt: raceClock()
+  };
+  directorQueue = [];
+  applyDirectorTake({
+    shot: "chase",
+    focus: candidate.passer.key,
+    secondary: candidate.target.key,
+    duration: 1.55,
+    cut: "hard",
+    kind: "predicted-pass",
+    kicker: `OVERTAKE PREDICTED · P${candidate.position}`,
+    headline: `${candidate.passer.name} IS CLOSING FAST`,
+    detail: `${candidate.passer.model} has the pace to pass ${candidate.target.name}${Number.isFinite(candidate.eta) ? ` · ETA ${candidate.eta.toFixed(1)}s` : ""}`
+  }, true);
+}
+
+function activeFocusCar() {
+  const requested = selectedCamera === "director" ? directorFocus : focusCompany;
+  const preferred = cars.get(requested);
+  if (preferred?.visible) return preferred;
+  const leader = cars.get(currentRace.leader);
+  if (leader?.visible) return leader;
+  return [...cars.values()].find((car) => car.visible) || null;
+}
+
+function activeSecondaryCar(primary) {
+  const requested = selectedCamera === "director" ? directorSecondary : null;
+  const explicit = cars.get(requested);
+  if (explicit?.visible && explicit !== primary) return explicit;
+  const activeCars = [...cars.values()].filter((car) => car.visible && car !== primary)
+    .sort((a, b) => Math.abs(a.userData.currentT - primary.userData.currentT) - Math.abs(b.userData.currentT - primary.userData.currentT));
+  return activeCars[0] || null;
+}
+
+function triggerCameraCut(kind = "hard") {
+  if (!cameraCutLayer || reducedMotion) return;
+  cameraCutLayer.classList.remove("is-cut", "is-whip");
+  void cameraCutLayer.offsetWidth;
+  cameraCutLayer.classList.add(kind === "whip" ? "is-whip" : "is-cut");
+}
+
+function showDirectorBanner({ kicker = "RACE CONTROL", headline = "LIVE TIMING", detail = "", color = "#d8ff51", duration = 3.1 } = {}) {
+  if (!directorBanner) return;
+  directorKicker.textContent = kicker;
+  directorHeadline.textContent = headline;
+  directorDetail.textContent = detail;
+  directorBanner.style.setProperty("--banner-color", color);
+  directorBanner.style.setProperty("--banner-duration", `${duration}s`);
+  directorBanner.classList.remove("is-visible");
+  void directorBanner.offsetWidth;
+  directorBanner.classList.add("is-visible");
+}
+
+function queueDirectorMoment(moment) {
+  if (cinematicLevel === "calm" && moment.kind === "specialist") return;
+  const suppliedShots = moment.shots?.length ? moment.shots : [{ shot: "chase", duration: 3 }];
+  const shots = cinematicLevel === "calm" ? suppliedShots.slice(0, 1) : suppliedShots;
+  const takes = shots.map((shot, index) => ({
+    ...shot,
+    focus: shot.focus || moment.focus,
+    secondary: shot.secondary || moment.secondary,
+    priority: (moment.priority || 50) - index * 0.01,
+    kicker: index === 0 ? moment.kicker : null,
+    headline: index === 0 ? moment.headline : null,
+    detail: index === 0 ? moment.detail : null,
+    kind: moment.kind
+  }));
+  if (["upgrade", "specialist"].includes(moment.kind)) {
+    directorQueue = directorQueue.filter((take) => !["upgrade", "specialist"].includes(take.kind));
+  }
+  if (moment.kind === "lead-change") directorQueue = [];
+  directorQueue.push(...takes);
+  directorQueue.sort((a, b) => b.priority - a.priority);
+  directorQueue = directorQueue.slice(0, cinematicLevel === "calm" ? 4 : 10);
+  if (selectedCamera === "director") {
+    const preemptDelay = moment.kind === "lead-change" ? 0.08 : cinematicLevel === "calm" ? 1.1 : cinematicLevel === "maximum" ? 0.05 : 0.12;
+    directorNextSwitch = Math.min(directorNextSwitch || Infinity, raceClock() + preemptDelay);
+  }
+}
+
+function raceOrder() {
+  return (currentRace.racers || []).filter((racer) => racer.active).sort((a, b) => b.score - a.score || COMPANY_ORDER.indexOf(a.key) - COMPANY_ORDER.indexOf(b.key));
+}
+
+function closestBattle(order) {
+  if (order.length < 2) return null;
+  let best = null;
+  for (let i = 0; i < order.length - 1; i++) {
+    const a = order[i];
+    const b = order[i + 1];
+    const visualGap = Math.abs((cars.get(a.key)?.userData.currentT || 0) - (cars.get(b.key)?.userData.currentT || 0));
+    const scoreGap = Math.abs(a.score - b.score);
+    const weight = visualGap * 100 + scoreGap * 0.35;
+    if (!best || weight < best.weight) best = { a, b, visualGap, scoreGap, weight, position: i + 1 };
+  }
+  return best;
+}
+
+function scheduledDirectorTake() {
+  const order = raceOrder();
+  if (!order.length) return { shot: "drone", focus: null, duration: 2.5, cut: "hard" };
+  const leader = order[0];
+  const challenger = order[1] || leader;
+  const battle = closestBattle(order);
+  const phase = currentRace.progress || 0;
+  const rotation = directorIndex++;
+  const nonLeaders = order.filter((racer) => racer.key !== leader.key);
+  const leastShown = [...(nonLeaders.length ? nonLeaders : order)].sort((a, b) => (lastShownAt.get(a.key) || -Infinity) - (lastShownAt.get(b.key) || -Infinity))[0];
+  const candidate = rotation % 3 === 0 ? leader : leastShown;
+  const gap = Math.max(0, leader.score - challenger.score);
+  const leaderDetail = `${leader.model} · ${Math.round(leader.score)} Frontier Pace`;
+  const contenderDetail = `P${order.indexOf(candidate) + 1} · ${candidate.model} · ${Math.round(candidate.score)} pace`;
+
+  const early = [
+    { shot: "drone", focus: leader.key, duration: 3.0, kicker: "FIELD VIEW", headline: `${leader.name} CONTROLS THE RACE`, detail: leaderDetail },
+    { shot: "chase", focus: leader.key, duration: 3.1, kicker: "RACE LEADER", headline: `${leader.name} · P1`, detail: leaderDetail },
+    { shot: "trackside", focus: candidate.key, duration: 2.8, kicker: "CAR WATCH", headline: `${candidate.name} ENTERS THE FRAME`, detail: contenderDetail },
+    { shot: "front", focus: leader.key, duration: 2.7, kicker: "LEADER CAM", headline: `${leader.name} FROM THE FRONT`, detail: `Gap to P2 · ${gap.toFixed(1)} pace` }
+  ];
+  const middle = [
+    { shot: "battle", focus: battle?.a.key || leader.key, secondary: battle?.b.key || challenger.key, duration: 3.3, kicker: `BATTLE FOR P${battle?.position || 1}`, headline: `${battle?.a.name || leader.name} vs ${battle?.b.name || challenger.name}`, detail: `${(battle?.scoreGap ?? gap).toFixed(1)} pace between them` },
+    { shot: "cockpit", focus: candidate.key, duration: 2.65, kicker: "ONBOARD", headline: `RIDE WITH ${candidate.name}`, detail: contenderDetail },
+    { shot: "low", focus: leader.key, duration: 2.55, kicker: "LOW CAM", headline: `${leader.name} ATTACKS THE KERB`, detail: leaderDetail },
+    { shot: "crane", focus: challenger.key, duration: 3.0, kicker: "CHASING P1", headline: `${challenger.name} ON THE ATTACK`, detail: `P2 · ${challenger.model} · gap ${gap.toFixed(1)}` },
+    { shot: "chase", focus: candidate.key, duration: 2.9, kicker: candidate.key === leader.key ? "RACE LEADER" : "CONTENDER WATCH", headline: `${candidate.name} · P${order.indexOf(candidate) + 1}`, detail: contenderDetail },
+    { shot: "trackside", focus: leader.key, duration: 2.8, kicker: "TRACKSIDE", headline: `${leader.name} FLASHES PAST`, detail: leaderDetail },
+    { shot: "orbit", focus: candidate.key, duration: 3.2, kicker: "HELICOPTER", headline: `FOLLOWING ${candidate.name}`, detail: contenderDetail },
+    { shot: "front", focus: challenger.key, duration: 2.55, kicker: "P2 CAMERA", headline: `${challenger.name} CLOSES IN`, detail: `Gap to leader · ${gap.toFixed(1)} pace` }
+  ];
+  const late = [
+    { shot: "battle", focus: leader.key, secondary: challenger.key, duration: 3.2, kicker: "FRONTIER FIGHT", headline: `${leader.name} vs ${challenger.name}`, detail: `P1 gap · ${gap.toFixed(1)} pace` },
+    { shot: "cockpit", focus: leader.key, duration: 2.65, kicker: "LEADER ONBOARD", headline: `INSIDE ${leader.name}`, detail: leaderDetail },
+    { shot: "finishline", focus: leader.key, duration: 3.0, kicker: "FINISH COMPLEX", headline: `${leader.name} APPROACHES THE LINE`, detail: leaderDetail },
+    { shot: "chase", focus: challenger.key, duration: 2.8, kicker: "LAST CHARGE", headline: `${challenger.name} KEEPS PUSHING`, detail: `P2 · ${challenger.model}` },
+    { shot: "drone", focus: leader.key, duration: 3.1, kicker: "AERIAL", headline: "THE FRONTIER ORDER", detail: order.map((r, i) => `P${i + 1} ${r.name}`).join(" · ") }
+  ];
+  const bank = phase < 0.18 ? early : phase > 0.84 ? late : middle;
+  return { ...bank[rotation % bank.length], cut: rotation % 3 === 2 ? "whip" : "hard" };
+}
+
+function setActualShot(shot, force = false) {
+  if (!force && actualShot === shot) return;
+  actualShot = shot;
+  tracksideReady = false;
+  finishlineReady = false;
+  updateCameraReadout();
+}
+
+function directorPriorityFor(take) {
+  if (!take) return DIRECTOR_PRIORITY.scheduled;
+  if (["predicted-pass", "pass-battle", "pass-complete", "lead-change"].includes(take.kind)) return DIRECTOR_PRIORITY.pass;
+  if (take.kind === "stunt") return DIRECTOR_PRIORITY.stunt;
+  if (["upgrade", "specialist"].includes(take.kind)) return DIRECTOR_PRIORITY.milestone;
+  if (take.kind === "finish") return DIRECTOR_PRIORITY.finish;
+  return take.lockPriority || take.priority || DIRECTOR_PRIORITY.scheduled;
+}
+
+function directorLockActive() {
+  if (directorLock.owner && raceClock() >= directorLock.until) directorLock = { owner: null, priority: 0, until: 0 };
+  return Boolean(directorLock.owner);
+}
+
+function acquireDirectorLock(owner, priority, duration) {
+  directorLockActive();
+  if (!directorLock.owner || priority >= directorLock.priority) {
+    directorLock = { owner, priority, until: raceClock() + Math.max(0.1, duration) };
+    return true;
+  }
+  return false;
+}
+
+function releaseDirectorLock(owner) {
+  if (!owner || directorLock.owner === owner) directorLock = { owner: null, priority: 0, until: 0 };
+}
+
+function applyDirectorTake(take, force = false) {
+  if (!take) return false;
+  const cinema = CINEMATIC_LEVELS[cinematicLevel];
+  const effectiveDuration = (take.duration || 3) * cinema.duration;
+  const takePriority = directorPriorityFor(take);
+  if (directorLockActive() && takePriority < directorLock.priority) return false;
+  if (["predicted-pass", "pass-battle", "pass-complete", "lead-change"].includes(take.kind)) acquireDirectorLock("pass", DIRECTOR_PRIORITY.pass, effectiveDuration);
+  else if (take.kind === "stunt") acquireDirectorLock("stunt", DIRECTOR_PRIORITY.stunt, effectiveDuration);
+  else if (take.kind === "finish") acquireDirectorLock("finish", DIRECTOR_PRIORITY.finish, effectiveDuration);
+  directorFocus = take.focus || currentRace.leader || raceOrder()[0]?.key || null;
+  directorSecondary = take.secondary || null;
+  if (directorFocus) lastShownAt.set(directorFocus, raceClock());
+  if (directorSecondary) lastShownAt.set(directorSecondary, raceClock());
+  directorCutCount += 1;
+  setActualShot(take.shot || "chase", true);
+  cameraSnapPending = true;
+  directorNextSwitch = raceClock() + effectiveDuration;
+  const requestedCut = take.cut || (force ? "hard" : "whip");
+  triggerCameraCut(!cinema.whip && requestedCut === "whip" ? "hard" : requestedCut);
+  const eventBanner = ["lead-change", "upgrade", "specialist", "predicted-pass", "pass-battle", "pass-complete"].includes(take.kind);
+  if (take.headline && (cinema.banners === "all" || eventBanner)) {
+    const color = COMPANY_META[directorFocus]?.color || "#d8ff51";
+    showDirectorBanner({ kicker: take.kicker, headline: take.headline, detail: take.detail, color, duration: Math.min(effectiveDuration, 3.4) });
+  }
+  updateFocusReadout();
+  updateCameraReadout();
+  return true;
+}
+
+function chooseDirectorShot(force = false) {
+  if (directorLockActive() && !force) return false;
+  const take = directorQueue.length ? directorQueue.shift() : scheduledDirectorTake();
+  return applyDirectorTake(take, force);
+}
+
+function setCinematicLevel(level) {
+  if (!CINEMATIC_LEVELS[level]) return;
+  cinematicLevel = level;
+  stage.dataset.cinematic = level;
+  const select = document.getElementById("cinematicLevel");
+  if (select) select.value = level;
+  updateCameraReadout();
+  showDirectorBanner({
+    kicker: "DIRECTOR SETTING",
+    headline: `${CINEMATIC_LEVELS[level].label} MODE`,
+    detail: level === "calm" ? "Longer shots · event graphics only" : level === "maximum" ? "Faster cuts · dramatic rigs · subtle camera vibration" : "Balanced broadcast pacing and full race graphics",
+    color: "#d8ff51",
+    duration: 2.6
+  });
+  if (selectedCamera === "director") directorNextSwitch = raceClock() + 0.25;
+}
+
+function setCameraMode(mode) {
+  if (!CAMERA_NAMES[mode]) return;
+  selectedCamera = mode;
+  document.querySelectorAll("[data-camera]").forEach((button) => button.classList.toggle("is-active", button.dataset.camera === mode));
+  if (mode === "director") {
+    directorFocus = currentRace.leader || raceOrder()[0]?.key || directorFocus;
+    directorNextSwitch = raceClock();
+    if (activeStunt) updateHeroPhase(true);
+    else if (activePass) {
+      applyDirectorTake({
+        shot: activePass.phase === "side-by-side" ? "battle" : "chase",
+        focus: activePass.passer,
+        secondary: activePass.target,
+        duration: 1.4,
+        cut: "hard",
+        kind: activePass.phase === "side-by-side" ? "pass-battle" : "predicted-pass"
+      }, true);
+    } else chooseDirectorShot(true);
+  } else {
+    focusCompany = focusCompany || currentRace.leader || raceOrder()[0]?.key || null;
+    setActualShot(mode, true);
+    cameraSnapPending = true;
+    triggerCameraCut("hard");
+    updateFocusReadout();
+  }
+  updateCameraReadout();
+}
+
+function updateCameraReadout() {
+  if (!cameraShotLabel) return;
+  cameraShotLabel.textContent = selectedCamera === "director"
+    ? `AUTO ${CINEMATIC_LEVELS[cinematicLevel].label} · CUT ${String(directorCutCount).padStart(2, "0")} · ${CAMERA_NAMES[actualShot]}`
+    : CAMERA_NAMES[actualShot];
+}
+
+function updateCamera(dt) {
+  if (selectedCamera === "director" && active && running && raceClock() >= directorNextSwitch && !finishMode && !activePass && !activeStunt && !directorLockActive()) chooseDirectorShot();
+  
+  // Garage sequence camera
+  if (raceSequencePhase !== 'racing' && garageGroup) {
+    const sequenceElapsed = elapsed - sequenceStartTime;
+    
+    if (sequenceElapsed < 2) {
+      // Phase 1: Camera inside garage, looking at cars
+      desiredCamera.set(-50, 5, 10);
+      desiredLook.set(-50, 2, -5);
+      camera.position.copy(desiredCamera);
+      camera.lookAt(desiredLook);
+      return;
+    } else if (sequenceElapsed < 4) {
+      // Phase 2: Camera stays in garage during fade
+      desiredCamera.set(-50, 5, 10);
+      desiredLook.set(-50, 2, -5);
+      camera.position.copy(desiredCamera);
+      camera.lookAt(desiredLook);
+      return;
+    } else if (sequenceElapsed < 6) {
+      // Phase 3: Camera moves to start line area
+      const progress = (sequenceElapsed - 4) / 2;
+      const eased = easeInOutCubic(progress);
+      desiredCamera.set(-50 + 50 * eased, 5, 10);
+      desiredLook.set(-50 + 50 * eased, 2, -5);
+      camera.position.copy(desiredCamera);
+      camera.lookAt(desiredLook);
+      return;
+    } else if (sequenceElapsed < 8) {
+      // Phase 4: Camera at start line
+      desiredCamera.set(0, 5, 10);
+      desiredLook.set(0, 2, -5);
+      camera.position.copy(desiredCamera);
+      camera.lookAt(desiredLook);
+      return;
+    }
+  }
+  
+  const focus = activeFocusCar();
+  if (!focus) {
+    desiredCamera.set(-92, 18, 33);
+    desiredLook.set(-82, 0, 0);
+    camera.position.copy(desiredCamera);
+    cameraLook.copy(desiredLook);
+    camera.lookAt(cameraLook);
+    return;
+  }
+
+  const secondary = activeSecondaryCar(focus);
+  const shot = actualShot;
+  const t = focus.userData.currentT;
+  const point = circuitCurve.getPointAt(t);
+  const tangent = circuitCurve.getTangentAt(t).normalize();
+  const side = tempB.set(-tangent.z, 0, tangent.x).normalize();
+  const carPos = focus.position;
+  let targetFov = 55;
+
+  if (shot === "chase") {
+    desiredCamera.copy(carPos).addScaledVector(tangent, -11.5).addScaledVector(side, 1.4).add(new THREE.Vector3(0, 4.5, 0));
+    desiredLook.copy(carPos).addScaledVector(tangent, 10).add(new THREE.Vector3(0, 1.1, 0));
+    targetFov = 64 + clamp(Math.abs(focus.userData.velocity) * 90, 0, 8);
+  } else if (shot === "cockpit") {
+    desiredCamera.copy(carPos).addScaledVector(tangent, 0.65).add(new THREE.Vector3(0, 1.52, 0));
+    desiredLook.copy(carPos).addScaledVector(tangent, 24).add(new THREE.Vector3(0, 1.0, 0));
+    targetFov = 74;
+  } else if (shot === "front") {
+    desiredCamera.copy(carPos).addScaledVector(tangent, 10.5).addScaledVector(side, -0.8).add(new THREE.Vector3(0, 2.7, 0));
+    desiredLook.copy(carPos).addScaledVector(tangent, -2).add(new THREE.Vector3(0, 0.9, 0));
+    targetFov = 60;
+  } else if (shot === "low") {
+    desiredCamera.copy(carPos).addScaledVector(tangent, -3.8).addScaledVector(side, 6.4).add(new THREE.Vector3(0, 0.85, 0));
+    desiredLook.copy(carPos).addScaledVector(tangent, 4).add(new THREE.Vector3(0, 0.65, 0));
+    targetFov = 68;
+  } else if (shot === "battle" && secondary) {
+    const midpoint = tempC.copy(carPos).add(secondary.position).multiplyScalar(0.5);
+    desiredCamera.copy(midpoint).addScaledVector(side, 13.5).addScaledVector(tangent, -2).add(new THREE.Vector3(0, 4.2, 0));
+    desiredLook.copy(midpoint).addScaledVector(tangent, 3).add(new THREE.Vector3(0, 0.9, 0));
+    targetFov = 58;
+  } else if (shot === "crane") {
+    desiredCamera.copy(carPos).addScaledVector(side, 15).addScaledVector(tangent, 5).add(new THREE.Vector3(0, 13.5, 0));
+    desiredLook.copy(carPos).addScaledVector(tangent, 2).add(new THREE.Vector3(0, 0.8, 0));
+    targetFov = 49;
+  } else if (shot === "drone") {
+    desiredCamera.copy(carPos).addScaledVector(tangent, -4).add(new THREE.Vector3(0, 38, 0));
+    desiredLook.copy(carPos).addScaledVector(tangent, 3);
+    targetFov = 50;
+  } else if (shot === "trackside") {
+    if (!tracksideReady) {
+      tracksideAnchor.copy(point).addScaledVector(side, 18).addScaledVector(tangent, 9).add(new THREE.Vector3(0, 4.3, 0));
+      tracksideReady = true;
+    }
+    desiredCamera.copy(tracksideAnchor);
+    desiredLook.copy(carPos).add(new THREE.Vector3(0, 1.1, 0));
+    targetFov = 44;
+  } else if (shot === "finishline") {
+    if (!finishlineReady) {
+      const finishPoint = circuitCurve.getPointAt(0.976);
+      const finishTangent = circuitCurve.getTangentAt(0.976).normalize();
+      const finishSide = tempD.set(-finishTangent.z, 0, finishTangent.x).normalize();
+      finishlineAnchor.copy(finishPoint).addScaledVector(finishSide, 17).addScaledVector(finishTangent, 4).add(new THREE.Vector3(0, 5.4, 0));
+      finishlineReady = true;
+    }
+    desiredCamera.copy(finishlineAnchor);
+    desiredLook.copy(carPos).add(new THREE.Vector3(0, 1.1, 0));
+    targetFov = 42;
+  } else {
+    const orbitRadius = finishMode ? 24 : 18;
+    const angle = elapsed * (finishMode ? 0.38 : 0.22);
+    desiredCamera.copy(carPos).add(new THREE.Vector3(Math.cos(angle) * orbitRadius, finishMode ? 13 : 10, Math.sin(angle) * orbitRadius));
+    desiredLook.copy(carPos).add(new THREE.Vector3(0, 1, 0));
+    targetFov = 53;
+  }
+
+  const shake = running && ["chase", "cockpit", "front", "low", "battle"].includes(shot)
+    ? CINEMATIC_LEVELS[cinematicLevel].shake
+    : 0;
+  if (shake) {
+    desiredCamera.addScaledVector(side, Math.sin(elapsed * 37) * shake);
+    desiredCamera.y += Math.sin(elapsed * 53) * shake * 0.55;
+  }
+
+  // Broadcast cameras are rigid rigs: a cut changes only the viewpoint, never
+  // the cars. Avoiding camera interpolation removes the optical rubber-band pull.
+  camera.position.copy(desiredCamera);
+  cameraLook.copy(desiredLook);
+  camera.fov = targetFov;
+  cameraSnapPending = false;
+  camera.updateProjectionMatrix();
+  camera.lookAt(cameraLook);
+
+  cars.forEach((car) => {
+    const showPlate = Boolean(car.userData.active && car.visible);
+    if (car.userData.label) car.userData.label.visible = showPlate;
+    if (car.userData.labelStalk) car.userData.labelStalk.visible = showPlate;
+  });
+}
+
+function updateFocusReadout() {
+  if (!focusReadout) return;
+  const key = (selectedCamera === "director" ? directorFocus : focusCompany) || currentRace.leader;
+  const racer = currentRace.racers?.find((item) => item.key === key);
+  const meta = COMPANY_META[key];
+  if (!meta || !racer) {
+    focusReadout.querySelector("b").textContent = "LEADER";
+    return;
+  }
+  focusReadout.style.setProperty("--follow-color", meta.color);
+  focusReadout.querySelector("b").textContent = `${meta.name} · ${Math.round(racer.score)}`;
+}
+
+function boost(company, detail = {}) {
+  const car = cars.get(company);
+  if (!car) return;
+  car.userData.boost = detail.delta > 0 ? 2.8 : 1.2;
+  const racer = currentRace.racers?.find((item) => item.key === company);
+  if (selectedCamera === "director") {
+    const isUpgrade = detail.delta > 0;
+    queueDirectorMoment({
+      priority: isUpgrade ? 88 : 72,
+      kind: isUpgrade ? "upgrade" : "specialist",
+      focus: company,
+      secondary: currentRace.leader !== company ? currentRace.leader : raceOrder()[1]?.key,
+      shots: isUpgrade
+        ? [
+            { shot: "low", duration: 2.25, cut: "hard" },
+            { shot: "chase", duration: 2.55, cut: "whip" },
+            { shot: "cockpit", duration: 2.15, cut: "hard" }
+          ]
+        : [
+            { shot: "trackside", duration: 2.35, cut: "hard" },
+            { shot: "crane", duration: 2.55, cut: "whip" }
+          ],
+      kicker: isUpgrade ? "UPGRADE DEPLOYED" : "SPECIALIST RELEASE",
+      headline: `${COMPANY_META[company].name} · ${detail.model || racer?.model || "NEW MODEL"}`,
+      detail: isUpgrade ? `Frontier Pace +${Math.round(detail.delta)} · now ${Math.round(detail.score || racer?.score || 0)}` : `${detail.model || racer?.model || "New model"} joins the research timeline`
+    });
+  } else {
+    focusCompany = company;
+    updateFocusReadout();
+  }
+}
+
+function setRunning(value) {
+  running = Boolean(value);
+  if (running && selectedCamera === "director" && active) directorNextSwitch = Math.min(directorNextSwitch || Infinity, raceClock() + 0.35);
+}
+
+function activate() {
+  active = true;
+  resizeRenderer();
+  cameraSnapPending = true;
+  if (selectedCamera === "director") {
+    directorFocus = currentRace.leader || raceOrder()[0]?.key || null;
+    directorNextSwitch = raceClock() + 0.18;
+    showDirectorBanner({ kicker: "BROADCAST CONTROL", headline: "AUTO DIRECTOR ONLINE", detail: "Watching the leader, closest battle, upgrades and overtakes", color: "#d8ff51", duration: 2.8 });
+  }
+}
+
+function startGarageSequence() {
+  if (!garageGroup) return;
+  
+  sequenceStartTime = elapsed;
+  raceSequencePhase = 'garage';
+  
+  // Reset scene to normal after sequence
+  setTimeout(() => {
+    scene.background = new THREE.Color(0x0b1414);
+    scene.fog = new THREE.Fog(0x0b1414, 0.001, 500);
+    raceSequencePhase = 'racing';
+    
+    // Hide garage
+    if (garageGroup) {
+      garageGroup.visible = false;
+    }
+  }, 8000); // Sequence takes 8 seconds
+}
+
+function deactivate() {
+  if (replayState) endReplay({ cancelled: true });
+  active = false;
+}
+
+function reset() {
+  if (replayState) endReplay({ cancelled: true });
+  clearTimeout(autoReplayTimer);
+  replayBuffer.length = 0;
+  replayCaptureAccumulator = 0;
+  replayWallTime = 0;
+  if (replayButton) replayButton.disabled = true;
+  finishMode = false;
+  finishWinner = null;
+  directorQueue = [];
+  directorLock = { owner: null, priority: 0, until: 0 };
+  directorCutCount = 0;
+  directorIndex = 0;
+  directorFocus = null;
+  directorSecondary = null;
+  lastLeader = null;
+  lastLeaderScore = 0;
+  pendingLeadChange = null;
+  activePass = null;
+  passCooldown.clear();
+  stuntQueue = [];
+  stuntCooldown.clear();
+  endActiveStunt(false);
+  stuntFramework?.hide();
+  physicalLeaderKey = null;
+  COMPANY_ORDER.forEach((key) => lastShownAt.set(key, -Infinity));
+  
+  // Reset garage sequence
+  raceSequencePhase = 'garage';
+  sequenceStartTime = 0;
+  if (garageGroup) {
+    garageGroup.visible = true;
+  }
+  
+  cars.forEach((car, key) => {
+    car.userData.currentT = 0.012;
+    car.userData.targetT = 0.012;
+    car.userData.seasonT = 0.012;
+    car.userData.lastSeasonT = 0.012;
+    car.userData.currentGap = 0;
+    car.userData.targetGap = 0;
+    car.userData.velocity = 0;
+    car.userData.boost = 0;
+    car.visible = false;
+    
+    // Reset car to garage position
+    if (car.userData.garagePosition) {
+      car.position.set(
+        car.userData.garagePosition.x - 50,
+        car.userData.garagePosition.y,
+        car.userData.garagePosition.z
+      );
+    } else {
+      placeCar(car, 0.012, COMPANY_META[key].lane);
+    }
+  });
+  
+  focusCompany = null;
+  if (selectedCamera === "director") {
+    setActualShot("drone", true);
+    directorNextSwitch = raceClock() + 0.2;
+    cameraSnapPending = true;
+  }
+}
+
+function finish(winner) {
+  const winnerKeys = (Array.isArray(winner) ? winner : [winner]).filter((key) => COMPANY_META[key]);
+  const primaryWinner = winnerKeys[0];
+  finishMode = true;
+  finishWinner = winnerKeys;
+  activePass = null;
+  pendingLeadChange = null;
+  stuntQueue = [];
+  endActiveStunt(false);
+  acquireDirectorLock("finish", DIRECTOR_PRIORITY.finish, 4.2);
+  focusCompany = primaryWinner;
+  directorFocus = primaryWinner;
+  winnerKeys.forEach((key) => { const car = cars.get(key); if (car) car.userData.boost = 3; });
+  setActualShot("finishline", true);
+  cameraSnapPending = true;
+  triggerCameraCut("hard");
+  const deadHeat = winnerKeys.length > 1;
+  showDirectorBanner({
+    kicker: "CHEQUERED FLAG",
+    headline: deadHeat ? `DEAD HEAT · ${winnerKeys.map((key) => COMPANY_META[key].name).join(" / ")}` : `${COMPANY_META[primaryWinner].name} WINS THE MODEL GP`,
+    detail: deadHeat ? winnerKeys.map((key) => currentRace.racers?.find((r) => r.key === key)?.model).filter(Boolean).join(" · ") : currentRace.racers?.find((r) => r.key === primaryWinner)?.model || "Current frontier leader",
+    color: COMPANY_META[primaryWinner].color,
+    duration: 3.4
+  });
+  updateCameraReadout();
+  updateFocusReadout();
+  window.setTimeout(() => {
+    if (!finishMode) return;
+    setActualShot("orbit", true);
+    cameraSnapPending = true;
+    triggerCameraCut("hard");
+  }, 1250);
+}
+
+function cycleCamera() {
+  const current = selectedCamera === "director" ? actualShot : selectedCamera;
+  const index = MANUAL_CAMERAS.indexOf(current);
+  setCameraMode(MANUAL_CAMERAS[(index + 1) % MANUAL_CAMERAS.length]);
+}
+
+function toggleDirector() {
+  setCameraMode(selectedCamera === "director" ? "chase" : "director");
+}
+
+function cycleFocus() {
+  const available = currentRace.racers?.filter((r) => r.active).map((r) => r.key) || [];
+  if (!available.length) return;
+  const current = selectedCamera === "director" ? directorFocus : focusCompany;
+  const index = available.indexOf(current);
+  const next = available[(index + 1) % available.length];
+  if (selectedCamera === "director") {
+    applyDirectorTake({
+      shot: "chase",
+      focus: next,
+      duration: 3.2,
+      cut: "hard",
+      kicker: "MANUAL TAKE",
+      headline: `FOLLOWING ${COMPANY_META[next].name}`,
+      detail: currentRace.racers.find((r) => r.key === next)?.model || "Selected car"
+    }, true);
+  } else {
+    focusCompany = next;
+    cameraSnapPending = true;
+    triggerCameraCut("hard");
+    updateFocusReadout();
+  }
+}
+
+function drawTrackMap() {
+  if (!mapCtx || !circuitCurve) return;
+  const width = mapCanvas.width;
+  const height = mapCanvas.height;
+  mapCtx.clearRect(0, 0, width, height);
+  const sampled = [];
+  for (let i = 0; i <= 120; i++) sampled.push(circuitCurve.getPointAt(i / 120));
+  const minX = Math.min(...sampled.map((p) => p.x));
+  const maxX = Math.max(...sampled.map((p) => p.x));
+  const minZ = Math.min(...sampled.map((p) => p.z));
+  const maxZ = Math.max(...sampled.map((p) => p.z));
+  const scale = Math.min((width - 22) / (maxX - minX), (height - 16) / (maxZ - minZ));
+  const tx = (x) => 11 + (x - minX) * scale;
+  const ty = (z) => height - 8 - (z - minZ) * scale;
+  mapCtx.lineCap = "round";
+  mapCtx.lineJoin = "round";
+  mapCtx.strokeStyle = "rgba(238,242,232,.18)";
+  mapCtx.lineWidth = 9;
+  mapCtx.beginPath();
+  sampled.forEach((p, i) => i ? mapCtx.lineTo(tx(p.x), ty(p.z)) : mapCtx.moveTo(tx(p.x), ty(p.z)));
+  mapCtx.stroke();
+  mapCtx.strokeStyle = "rgba(238,242,232,.65)";
+  mapCtx.lineWidth = 1.5;
+  mapCtx.stroke();
+
+  cars.forEach((car, key) => {
+    if (!car.visible) return;
+    const p = circuitCurve.getPointAt(car.userData.currentT);
+    mapCtx.fillStyle = COMPANY_META[key].color;
+    mapCtx.shadowColor = COMPANY_META[key].color;
+    mapCtx.shadowBlur = 8;
+    mapCtx.beginPath();
+    mapCtx.arc(tx(p.x), ty(p.z), key === currentRace.leader ? 4.6 : 3.2, 0, Math.PI * 2);
+    mapCtx.fill();
+    mapCtx.shadowBlur = 0;
+  });
+}
+
+function animate() {
+  renderHandle = requestAnimationFrame(animate);
+  const rawDt = Math.min(clock.getDelta(), 0.5);
+  const dt = Math.min(rawDt, 0.05);
+  replayWallTime += rawDt;
+  elapsed += dt;
+  if (!initialized) return;
+  if (replayState) {
+    updateReplay(rawDt);
+  } else {
+    updateCars(dt);
+    updateCamera(dt);
+    captureReplayFrame(rawDt);
+  }
+  if (active) {
+    if (!replayState) drawTrackMap();
+    renderer.render(scene, camera);
+  }
+  
+  // Animate garage sequence
+  if (raceSequencePhase !== 'racing' && garageGroup && sequenceStartTime > 0) {
+    const sequenceElapsed = elapsed - sequenceStartTime;
+    animateGarageSequence(sequenceElapsed);
+  }
+}
+
+function bindCameraControls() {
+  document.querySelectorAll("[data-camera]").forEach((button) => {
+    button.addEventListener("click", () => setCameraMode(button.dataset.camera));
+  });
+  document.getElementById("cinematicLevel")?.addEventListener("change", (event) => setCinematicLevel(event.target.value));
+  stuntToggle?.addEventListener("click", () => toggleStunts());
+  replayButton?.addEventListener("click", () => replayState ? endReplay({ cancelled: true }) : startReplay("LAST FIVE SECONDS"));
+}
+
+function init() {
+  try {
+    makeRenderer();
+    makeScene();
+    makeCurve();
+    createTrack();
+    // Stunt framework is optional - only initialize if loaded
+    if (window.MGPStuntFramework && window.MGPStuntFramework.StuntFramework) {
+      stuntFramework = new window.MGPStuntFramework.StuntFramework({ THREE, scene, curve: circuitCurve });
+    } else {
+      console.warn('[Race3D] Stunt framework not loaded - stunts disabled');
+    }
+    createCars();
+    createGarage(); // Create garage scene
+    bindCameraControls();
+    updateStuntToggleUI();
+    if (replayButton && (reducedMotion || compactDevice)) {
+      replayButton.disabled = true;
+      replayButton.title = "Replay is disabled in reduced-motion or low-power mode";
+    }
+    stage.dataset.cinematic = cinematicLevel;
+    resizeRenderer();
+    setCameraMode("director");
+    initialized = true;
+    loading?.classList.add("is-ready");
+    const observer = new ResizeObserver(resizeRenderer);
+    observer.observe(stage);
+    window.addEventListener("resize", resizeRenderer);
+    animate();
+
+    window.mgp3d = {
+      updateRace,
+      boost,
+      setRunning,
+      activate,
+      deactivate,
+      reset,
+      finish,
+      cycleCamera,
+      toggleDirector,
+      cycleFocus,
+      setCamera: setCameraMode,
+      setCinematicLevel,
+      startReplay,
+      startGarageSequence,
+      toggleReplay: () => replayState ? endReplay({ cancelled: true }) : startReplay("MANUAL REPLAY"),
+      cancelReplay: () => endReplay({ cancelled: true }),
+      getReplayState: () => replayState ? { active: true, reason: replayState.reason, progress: replayState.playhead / Math.max(.001, replayState.lastTime - replayState.firstTime), frames: replayState.frames.length } : { active: false, frames: replayBuffer.length },
+      performStunt,
+      toggleStunts,
+      setStuntsEnabled,
+      getStuntState: () => ({
+        enabled: stuntsEnabled,
+        active: activeStunt ? { ...activeStunt, primitive: stuntFramework?.activePrimitive?.name || null } : null,
+        queued: stuntQueue.length,
+        queue: stuntQueue.map((item) => ({ company: item.company, type: item.type, priority: item.priority, expiresAt: item.expiresAt }))
+      }),
+      getPrimitiveState: () => ({ activeType: stuntFramework?.activeType || null, activePrimitive: stuntFramework?.activePrimitive?.name || null, difficulty: stuntFramework?.difficulty ?? null }),
+      getPhysicalLeader: () => physicalLeaderKey,
+      getDirectorState: () => ({
+        activePass: activePass ? { ...activePass } : null,
+        pendingLeadChange: pendingLeadChange ? { ...pendingLeadChange } : null,
+        focus: directorFocus,
+        shot: actualShot,
+        lock: { ...directorLock }
+      }),
+      getTelemetry: () => Object.fromEntries([...cars.entries()].map(([key, car]) => [key, {
+        active: car.userData.active,
+        position: car.userData.currentT,
+        target: car.userData.targetT,
+        season: car.userData.seasonT,
+        gap: car.userData.currentGap
+      }]))
+    };
+    window.dispatchEvent(new Event("mgp3d-ready"));
+  } catch (error) {
+    console.error("Model Grand Prix 3D failed to initialize", error);
+    if (loading) {
+      loading.innerHTML = `<b>3D RENDERER UNAVAILABLE</b><small>${error.message || "Your browser could not start WebGL."}</small>`;
+    }
+  }
+}
+
+init();

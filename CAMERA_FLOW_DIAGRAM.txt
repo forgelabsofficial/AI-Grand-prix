@@ -1,0 +1,77 @@
+=== CAMERA FLOW DIAGRAM ===
+
+Top-down view (looking from above, +Y axis up)
+Z axis points UP in this diagram
+X axis points RIGHT
+
+Z: 42.5 |==== Back Wall ====|
+      |    Garage          |
+Z: 38 |    🚗 Cars Start   |
+      |                    |
+Z: 30 |    GARAGE CENTER   |
+      |                    |
+Z: 17.5 |==== Door ====    |
+      |                    |
+Z: 15 |    🚗 Cars Exit    |  ← Shot 4 end position
+      |                    |
+Z: 12 |    📹 Shot 5 Cam   |  ← Camera between door and line
+      |                    |
+Z: 10 |    Shot 4 Cam      |  ← Camera outside door
+      |                    |
+Z: 8  |    🚗 Shot 5 End   |  ← Approaching line
+      |                    |
+Z: 6.25 |== Starting Line ==|  ← Final destination
+      |                    |
+Z: 3  |    📹 Shot 6 Cam   |  ← Camera in front of line
+      |                    |
+Z: 0  |                    |
+
+=== SHOT 4 (12-15s): GARAGE EXTERIOR ===
+Camera: x=-105, y=6, z=10 (elevated, outside door, to the side)
+LookAt: x=-125, y=2, z=17.5 (at the door)
+FOV: 60°
+
+Cars: z=38 → z=15
+- Start inside garage (far from camera)
+- Drive through door (pass through z=17.5)
+- Stop at z=15 (just past door)
+
+View: Camera sees garage from outside, cars emerge through door
+
+=== SHOT 5 (15-17s): CARS DRIVE PAST ===
+Camera: x=-115, y=2, z=12 (between door and line)
+LookAt: x=-125, y=1, z=8 (toward starting line)
+FOV: 65°
+
+Cars: z=15 → z=8
+- Start at z=15 (from Shot 4)
+- Drive past camera (camera at z=12)
+- End at z=8 (approaching line)
+
+View: Side view of cars driving toward starting line
+
+=== SHOT 6 (17-20s): ARRIVE AT STARTING LINE ===
+Camera: x=-117, y=3, z=3 (in front of line, to the side)
+LookAt: x=-125, y=1, z=6.25 (at starting line)
+FOV: 65°
+
+Cars: z=8 → z=6.25
+- Start at z=8 (from Shot 5)
+- Arrive at starting line (z=6.25)
+- Stop at line
+
+View: Front-side view of cars arriving at starting line
+
+=== CAR JOURNEY SUMMARY ===
+1. Inside garage (z=38) → Shot 4
+2. Exit through door (z=17.5) → Shot 4
+3. Stop past door (z=15) → Shot 4 end
+4. Drive toward line (z=15 → z=8) → Shot 5
+5. Pass camera (z=12) → Shot 5
+6. Arrive at line (z=6.25) → Shot 6
+
+=== KEY FIXES ===
+✅ Shot 4: Camera moved to z=10 (was z=5), lookAt at z=17.5 (door)
+✅ Shot 5: Camera moved to z=12 (was z=50 behind garage!)
+✅ Shot 6: Camera lookAt adjusted to z=6.25 (starting line)
+✅ Cars now have logical positions throughout all shots

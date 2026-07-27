@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Fullscreen Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0b0e0c;
+      color: #fff;
+      font-family: monospace;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+      background: rgba(4,7,5,.58);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 5px;
+      color: #9aa39c;
+    }
+    button:hover {
+      background: rgba(216,255,81,0.2);
+      border-color: #d8ff51;
+      color: #fff;
+    }
+    button.active {
+      background: rgba(216,255,81,0.1);
+      border-color: #d8ff51;
+      color: #d8ff51;
+    }
+    #log {
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .demo-area {
+      margin: 20px 0;
+      padding: 40px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 8px;
+      text-align: center;
+    }
+    :fullscreen .demo-area {
+      background: linear-gradient(135deg, #d8ff51 0%, #b8e031 100%);
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fullscreen API Test</h1>
+  
+  <div>
+    <button id="btn1">Test Button 1</button>
+    <button id="btn2">Test Button 2</button>
+    <button id="btn3">Toggle Fullscreen (F11)</button>
+  </div>
+  
+  <div class="demo-area">
+    <h2>Demo Area</h2>
+    <p>This area changes appearance in fullscreen mode</p>
+  </div>
+  
+  <div id="log"></div>
+
+  <script>
+    const log = document.getElementById('log');
+    const btn1 = document.getElementById('btn1');
+    const btn2 = document.getElementById('btn2');
+    const btn3 = document.getElementById('btn3');
+    
+    function addLog(msg) {
+      const entry = document.createElement('div');
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      entry.style.padding = '3px 0';
+      entry.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+      log.insertBefore(entry, log.firstChild);
+      console.log(msg);
+    }
+    
+    addLog('Page loaded');
+    addLog(`Fullscreen API supported: ${document.fullscreenEnabled || 'unknown'}`);
+    
+    // Button 1 test
+    btn1.addEventListener('click', () => {
+      addLog('Button 1 clicked!');
+      btn1.classList.toggle('active');
+    });
+    
+    // Button 2 test
+    btn2.addEventListener('click', () => {
+      addLog('Button 2 clicked!');
+      btn2.classList.toggle('active');
+    });
+    
+    // Button 3 - Fullscreen
+    btn3.addEventListener('click', () => {
+      addLog('Fullscreen button clicked');
+      toggleFullscreen();
+    });
+    
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        addLog('Requesting fullscreen...');
+        document.documentElement.requestFullscreen()
+          .then(() => {
+            addLog('✅ Fullscreen entered successfully');
+            btn3.classList.add('active');
+          })
+          .catch(err => {
+            addLog(`❌ Error: ${err.message}`);
+            console.error(err);
+          });
+      } else {
+        addLog('Exiting fullscreen...');
+        document.exitFullscreen()
+          .then(() => {
+            addLog('✅ Fullscreen exited successfully');
+            btn3.classList.remove('active');
+          })
+          .catch(err => {
+            addLog(`❌ Error: ${err.message}`);
+            console.error(err);
+          });
+      }
+    }
+    
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        addLog('F11 pressed');
+        toggleFullscreen();
+      }
+    });
+    
+    // Listen for fullscreen changes
+    document.addEventListener('fullscreenchange', () => {
+      addLog(`Fullscreen state: ${document.fullscreenElement ? 'ON' : 'OFF'}`);
+    });
+    
+    addLog('Event listeners attached');
+    addLog('Click buttons to test, or press F11');
+  </script>
+</body>
+</html>

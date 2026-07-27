@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Gemini vs DeepSeek Config</title>
+  <script src="metrics.js"></script>
+  <script src="configs/gemini-vs-deepseek.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #1a1a1a; color: #eee; }
+    .success { color: #4caf50; }
+    .error { color: #f44336; }
+    pre { background: #2a2a2a; padding: 15px; border-radius: 5px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Model Grand Prix - Config Test</h1>
+  <div id="output"></div>
+
+  <script>
+    const output = document.getElementById('output');
+    
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = type;
+      div.innerHTML = message;
+      output.appendChild(div);
+      console.log(message);
+    }
+
+    try {
+      log('✓ Test started', 'success');
+      
+      // Check if RACE_CONFIG exists
+      if (window.RACE_CONFIG) {
+        log(`✓ RACE_CONFIG loaded: ${window.RACE_CONFIG.name}`, 'success');
+        log(`✓ Company order: ${window.RACE_CONFIG.companyOrder.join(', ')}`, 'success');
+        log(`✓ Companies: ${Object.keys(window.RACE_CONFIG.companies).join(', ')}`, 'success');
+        log(`✓ Models count: ${window.RACE_CONFIG.models.length}`, 'success');
+        log(`✓ Stunt events: ${Object.keys(window.RACE_CONFIG.stuntEvents).length}`, 'success');
+        log(`✓ Sources: ${window.RACE_CONFIG.sources.length}`, 'success');
+        
+        // Show sample data
+        log('<h3>Sample Model:</h3>', 'info');
+        log(`<pre>${JSON.stringify(window.RACE_CONFIG.models[0], null, 2)}</pre>`, 'info');
+        
+        log('<h3>Companies:</h3>', 'info');
+        log(`<pre>${JSON.stringify(window.RACE_CONFIG.companies, null, 2)}</pre>`, 'info');
+        
+        log('<div class="success">✓ All checks passed! Framework is working correctly.</div>', 'success');
+      } else {
+        log('✗ RACE_CONFIG not found', 'error');
+      }
+    } catch (error) {
+      log(`✗ Error: ${error.message}`, 'error');
+      console.error(error);
+    }
+  </script>
+
+  <script src="app.js"></script>
+</body>
+</html>

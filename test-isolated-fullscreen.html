@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Minimal Fullscreen Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0b0e0c;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    
+    .test-area {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      background: #1a1a1a;
+      margin: 20px 0;
+      border: 2px solid #333;
+    }
+    
+    .fullscreen-controls {
+      position: absolute;
+      z-index: 19;
+      right: 20px;
+      top: 100px;
+      display: flex;
+      gap: 5px;
+    }
+    
+    .fullscreen-toggle,
+    .theater-toggle {
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 5px;
+      background: rgba(4,7,5,.58);
+      color: #9aa39c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 16px;
+    }
+    
+    .fullscreen-toggle:hover,
+    .theater-toggle:hover {
+      background: rgba(216,255,81,0.2);
+      border-color: #d8ff51;
+      color: #fff;
+    }
+    
+    .fullscreen-toggle.is-active,
+    .theater-toggle.is-active {
+      color: #d8ff51;
+      border-color: #d8ff51;
+      background: rgba(216,255,81,.08);
+    }
+    
+    .log {
+      background: #000;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      padding: 3px 0;
+      border-bottom: 1px solid #222;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    
+    :fullscreen .test-area {
+      background: #d8ff51;
+    }
+  </style>
+</head>
+<body>
+  <h1>Minimal Fullscreen Button Test</h1>
+  
+  <p>This test isolates the fullscreen buttons to verify they work correctly.</p>
+  
+  <div class="test-area">
+    <h2>Test Area</h2>
+    <p>Buttons should be in the top-right corner</p>
+    
+    <div class="fullscreen-controls">
+      <button class="fullscreen-toggle" id="fullscreenBtn" title="Toggle fullscreen (F11)">⛶</button>
+      <button class="theater-toggle" id="theaterBtn" title="Toggle theater mode">🎭</button>
+    </div>
+  </div>
+  
+  <button onclick="testFullscreen()">Test Fullscreen API</button>
+  <button onclick="clearLog()">Clear Log</button>
+  
+  <div class="log" id="log"></div>
+
+  <script>
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const theaterBtn = document.getElementById('theaterBtn');
+    const log = document.getElementById('log');
+    
+    function addLog(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      entry.style.color = type === 'error' ? '#ff4444' : type === 'success' ? '#4ade80' : '#fff';
+      log.insertBefore(entry, log.firstChild);
+      console.log(message);
+    }
+    
+    function clearLog() {
+      log.innerHTML = '';
+    }
+    
+    addLog('Page loaded');
+    addLog(`Fullscreen API supported: ${document.fullscreenEnabled || 'unknown'}`);
+    
+    // Test fullscreen button
+    fullscreenBtn.addEventListener('click', () => {
+      addLog('Fullscreen button clicked!');
+      
+      if (!document.fullscreenElement) {
+        addLog('Requesting fullscreen...');
+        document.documentElement.requestFullscreen()
+          .then(() => {
+            addLog('✅ Fullscreen entered', 'success');
+            fullscreenBtn.classList.add('is-active');
+          })
+          .catch(err => {
+            addLog(`❌ Error: ${err.message}`, 'error');
+            console.error(err);
+          });
+      } else {
+        addLog('Exiting fullscreen...');
+        document.exitFullscreen()
+          .then(() => {
+            addLog('✅ Fullscreen exited', 'success');
+            fullscreenBtn.classList.remove('is-active');
+          })
+          .catch(err => {
+            addLog(`❌ Error: ${err.message}`, 'error');
+            console.error(err);
+          });
+      }
+    });
+    
+    // Test theater button
+    theaterBtn.addEventListener('click', () => {
+      addLog('Theater button clicked!');
+      document.body.classList.toggle('theater-mode');
+      const isActive = document.body.classList.contains('theater-mode');
+      theaterBtn.classList.toggle('is-active');
+      addLog(`Theater mode ${isActive ? 'enabled' : 'disabled'}`, 'success');
+    });
+    
+    // Test F11 key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        addLog('F11 pressed');
+        fullscreenBtn.click();
+      }
+    });
+    
+    // Listen for fullscreen changes
+    document.addEventListener('fullscreenchange', () => {
+      const isFullscreen = !!document.fullscreenElement;
+      addLog(`Fullscreen state: ${isFullscreen ? 'ON' : 'OFF'}`, 'success');
+      fullscreenBtn.classList.toggle('is-active', isFullscreen);
+    });
+    
+    // Test function
+    function testFullscreen() {
+      addLog('Testing fullscreen API directly...');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen()
+          .then(() => addLog('✅ Direct fullscreen test successful', 'success'))
+          .catch(err => addLog(`❌ Direct test failed: ${err.message}`, 'error'));
+      } else {
+        document.exitFullscreen()
+          .then(() => addLog('✅ Direct exit test successful', 'success'))
+          .catch(err => addLog(`❌ Direct exit test failed: ${err.message}`, 'error'));
+      }
+    }
+    
+    addLog('Event listeners attached - ready to test');
+    addLog('Click the buttons or press F11');
+  </script>
+</body>
+</html>

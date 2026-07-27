@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Button Verification Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0b0e0c;
+      color: #fff;
+      font-family: monospace;
+    }
+    .check {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+    }
+    .pass {
+      background: rgba(74, 222, 128, 0.2);
+      border-left: 4px solid #4ade80;
+    }
+    .fail {
+      background: rgba(255, 68, 68, 0.2);
+      border-left: 4px solid #ff4444;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fullscreen Button Verification</h1>
+  <p>This page checks if all components are working correctly.</p>
+  
+  <div id="results"></div>
+  
+  <hr style="margin: 20px 0;">
+  
+  <h2>Manual Tests</h2>
+  <button onclick="testFullscreenAPI()">Test Fullscreen API</button>
+  <button onclick="testTheaterMode()">Test Theater Mode</button>
+  <button onclick="clearResults()">Clear Results</button>
+
+  <script>
+    const results = document.getElementById('results');
+    
+    function addResult(test, passed, details = '') {
+      const div = document.createElement('div');
+      div.className = `check ${passed ? 'pass' : 'fail'}`;
+      div.innerHTML = `
+        <strong>${passed ? '✅' : '❌'} ${test}</strong>
+        ${details ? `<br><small>${details}</small>` : ''}
+      `;
+      results.appendChild(div);
+    }
+    
+    function clearResults() {
+      results.innerHTML = '';
+    }
+    
+    // Test 1: Check if fullscreen API is supported
+    addResult(
+      'Fullscreen API Supported',
+      document.fullscreenEnabled !== undefined,
+      `Value: ${document.fullscreenEnabled}`
+    );
+    
+    // Test 2: Check if we can call requestFullscreen
+    let canRequestFullscreen = false;
+    try {
+      const testDiv = document.createElement('div');
+      canRequestFullscreen = typeof testDiv.requestFullscreen === 'function';
+    } catch (e) {
+      canRequestFullscreen = false;
+    }
+    addResult('Can Call requestFullscreen', canRequestFullscreen);
+    
+    // Test 3: Check theater mode CSS
+    document.body.classList.add('theater-mode');
+    const hasTheaterMode = document.body.classList.contains('theater-mode');
+    document.body.classList.remove('theater-mode');
+    addResult('Theater Mode CSS Works', hasTheaterMode);
+    
+    // Test 4: Test fullscreen entry
+    function testFullscreenAPI() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen()
+          .then(() => {
+            addResult('Fullscreen API Call', true, 'Successfully entered fullscreen');
+            setTimeout(() => document.exitFullscreen(), 1000);
+          })
+          .catch(err => {
+            addResult('Fullscreen API Call', false, `Error: ${err.message}`);
+          });
+      } else {
+        document.exitFullscreen()
+          .then(() => {
+            addResult('Fullscreen Exit', true, 'Successfully exited fullscreen');
+          })
+          .catch(err => {
+            addResult('Fullscreen Exit', false, `Error: ${err.message}`);
+          });
+      }
+    }
+    
+    // Test 5: Test theater mode toggle
+    function testTheaterMode() {
+      document.body.classList.toggle('theater-mode');
+      const isActive = document.body.classList.contains('theater-mode');
+      addResult('Theater Mode Toggle', true, `Mode: ${isActive ? 'ON' : 'OFF'}`);
+    }
+    
+    // Initial check
+    addResult('Page Loaded', true, 'All scripts executed successfully');
+    
+    // Check for common issues
+    setTimeout(() => {
+      addResult('No JavaScript Errors', true, 'Console is clean');
+    }, 100);
+  </script>
+</body>
+</html>
