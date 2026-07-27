@@ -5,14 +5,15 @@ completion reports, feature write-ups, bugfix notes, and design/planning docs
 produced while the framework was being built. They're kept for reference but
 are not required to run or extend the project.
 
-For day-to-day use, see the root-level docs instead:
+For day-to-day use, see the root-level and `guides/` docs instead:
 
 - `../README.md` — main framework documentation
-- `../QUICKSTART.md` — quick start guide
-- `../HOW-TO-CREATE-CUSTOM-RACE.md` — guide to building a new race config
+- `guides/QUICKSTART.md` — quick start guide
+- `guides/HOW-TO-CREATE-CUSTOM-RACE.md` — guide to building a new race config
 
 ## Contents
 
+- `guides/` — the two "how do I use/extend this" guides
 - `FULL-PROJECT-DOCUMENTATION.md` — full technical documentation
 - `research-notes.md`, `current-skills-circuit-report.md` — data/research backing the race configs
 - `stunts-and-judging-plan.md`, `stunt-stabilization-report.md` — stunt system design notes

@@ -33,7 +33,7 @@ python3 -m http.server 8080
 
 ## Documentation
 
-- **[HOW-TO-CREATE-CUSTOM-RACE.md](../HOW-TO-CREATE-CUSTOM-RACE.md)** - Complete guide with examples
+- **[HOW-TO-CREATE-CUSTOM-RACE.md](guides/HOW-TO-CREATE-CUSTOM-RACE.md)** - Complete guide with examples
 - **[FULL-PROJECT-DOCUMENTATION.md](FULL-PROJECT-DOCUMENTATION.md)** - Technical documentation
 
 ## Example: Gemini vs DeepSeek
@@ -81,7 +81,7 @@ model-grand-prix/
 
 ## Need Help?
 
-1. Read [HOW-TO-CREATE-CUSTOM-RACE.md](../HOW-TO-CREATE-CUSTOM-RACE.md)
+1. Read [HOW-TO-CREATE-CUSTOM-RACE.md](guides/HOW-TO-CREATE-CUSTOM-RACE.md)
 2. Check browser console (F12) for errors
 3. Compare your code with the examples in the guide
 
@@ -91,4 +91,4 @@ MIT License
 
 ---
 
-**Start by reading [HOW-TO-CREATE-CUSTOM-RACE.md](../HOW-TO-CREATE-CUSTOM-RACE.md)**
+**Start by reading [HOW-TO-CREATE-CUSTOM-RACE.md](guides/HOW-TO-CREATE-CUSTOM-RACE.md)**
